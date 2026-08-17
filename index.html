@@ -7,7 +7,24 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-size:13px;background:#f0ede8;color:#1a1917;direction:rtl;min-height:100vh}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-size:13px;background:#f0ede8;color:#1a1917;direction:rtl;min-height:100vh;padding-bottom:54px}
+
+/* شريط الدعم الفني الثابت */
+#support-bar{position:fixed;bottom:0;left:0;right:0;z-index:2000;background:#1a3a5c;color:#fff;padding:9px 16px;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 -2px 8px rgba(0,0,0,0.15);font-size:12.5px;flex-wrap:wrap;text-align:center}
+#support-bar .lbl{opacity:0.85}
+#support-bar .name{font-weight:700}
+#support-bar a.phone{color:#fff;background:rgba(255,255,255,0.16);padding:5px 12px;border-radius:16px;text-decoration:none;font-weight:700;letter-spacing:0.3px;white-space:nowrap;transition:0.15s}
+#support-bar a.phone:hover{background:rgba(255,255,255,0.3)}
+@media (max-width:520px){
+  body{padding-bottom:64px;font-size:12.5px}
+  #support-bar{padding:8px 10px;gap:6px;font-size:11.5px}
+  #header{flex-direction:column;align-items:flex-start;gap:6px}
+  #stats-bar{flex-wrap:wrap;gap:8px}
+  .tabs{overflow-x:auto;padding:0 8px}
+  .tab-content{padding:12px}
+  table{font-size:11px}
+  th,td{padding:6px 6px}
+}
 #header{background:#1a3a5c;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
 #header h1{font-size:16px;font-weight:600;letter-spacing:0.5px}
 #header .sub{font-size:11px;opacity:0.7;margin-top:2px}
@@ -78,7 +95,7 @@ select,input[type=date]{padding:7px 10px;border-radius:7px;border:1px solid #c5b
 .unknown-atm{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #ffb74d;border-radius:6px;padding:4px 10px;margin:3px;font-size:11px}
 .progress-bar{background:#e0dbd3;border-radius:4px;height:6px;margin-top:4px}
 .progress-fill{background:#1a3a5c;height:6px;border-radius:4px;transition:width 0.3s}
-#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a3a5c;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;display:none;z-index:999;white-space:nowrap}
+#toast{position:fixed;bottom:66px;left:50%;transform:translateX(-50%);background:#1a3a5c;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;display:none;z-index:999;white-space:nowrap}
 .fl{display:flex}.ai{align-items:center}.jb{justify-content:space-between}.g8{gap:8px}.mb12{margin-bottom:12px}.mb8{margin-bottom:8px}
 .entry-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding:14px;background:#f5f2ee;border-radius:8px}
 input[type=text]{padding:7px 10px;border-radius:7px;border:1px solid #c5bfb7;background:#fff;color:#333;font-size:12px;font-family:inherit}
@@ -1544,5 +1561,10 @@ window.onload = () => {
   refreshAll();
 };
 </script>
+<div id="support-bar">
+  <span class="lbl">الدعم الفني:</span>
+  <span class="name">المهندس صلاح غالب</span>
+  <a class="phone" href="tel:0556321436">📞 0556321436</a>
+</div>
 </body>
 </html>
