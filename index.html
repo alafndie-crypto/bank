@@ -359,6 +359,7 @@ const DEFAULT_ATM_MAP = {
 let state = {
   bankFiles:  {},  // { fileName: { data:{atmId:{date:amount}}, start, end } }
   branchData: {},  // { atmId: { date: amount } }
+  bankOverrides: {}, // { atmId: { date: amount } } - manual corrections to bank amounts
   customAtms: {},  // legacy compat
   atmRules:   [],  // [ { id, atmId, branch, fromDate, toDate, op } ]
   // op = 'assign'  → صرافة تنتمي لـ branch في النطاق
@@ -473,7 +474,24 @@ function getBankData() {
       }
     }
   }
+  // تطبيق أي تصحيحات يدوية على رقم البنك (تُلغي القيمة الأصلية من الملف لهذا اليوم)
+  for (const [atmId, dates] of Object.entries(state.bankOverrides || {})) {
+    for (const [date, amt] of Object.entries(dates)) {
+      if (!result[atmId]) result[atmId] = {};
+      result[atmId][date] = amt;
+    }
+  }
   return result;
+}
+
+// القيمة الأصلية من ملفات البنك فقط (بدون أي تصحيح يدوي) - تُستخدم لمعرفة هل الرقم مُعدَّل
+function getRawBankAmount(atmId, date) {
+  let total = 0, found = false;
+  for (const file of Object.values(state.bankFiles)) {
+    const amt = (file.data[atmId] || {})[date];
+    if (amt) { total += amt; found = true; }
+  }
+  return found ? total : null;
 }
 
 // Get all dates across bank data
@@ -532,6 +550,7 @@ function loadState() {
       const s = JSON.parse(raw);
       state.bankFiles  = s.bankFiles  || {};
       state.branchData = s.branchData || {};
+      state.bankOverrides = s.bankOverrides || {};
       state.customAtms = s.customAtms || {};
       state.atmRules   = s.atmRules   || [];
     }
@@ -901,7 +920,8 @@ function renderEntry() {
         const diff = branchAmt - bankAmt;
         // Mark as inactive date (ATM not in this branch on this date)
         const inactive = !bankAmt && (bd[atmId]||{})[d];
-        return { bankAmt, branchAmt, diff, d, inactive };
+        const overridden = !!(state.bankOverrides[atmId] && state.bankOverrides[atmId][d] !== undefined);
+        return { bankAmt, branchAmt, diff, d, inactive, overridden };
       });
       branchBankTotal += atmBankTotal;
       branchBranchTotal += atmBranchTotal;
@@ -915,8 +935,21 @@ function renderEntry() {
           const isMatched = c.bankAmt && Math.abs(c.bankAmt - currentVal) < 0.01;
           const bankFilled = c.bankAmt && currentVal && Math.abs(currentVal - c.bankAmt) < 0.01;
           return `<td style="padding:4px 6px">
-          <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
-            <span style="font-size:12px;color:#2e7d32;font-weight:700">بنك: <span class="num" style="color:#2e7d32;font-weight:700">${c.bankAmt?fmt(c.bankAmt):'-'}</span></span>
+          <div style="display:flex;align-items:center;gap:3px;margin-bottom:2px">
+            <span style="font-size:11px;color:#2e7d32;font-weight:700;white-space:nowrap">بنك:</span>
+            <input type="text" inputmode="decimal" value="${c.bankAmt?c.bankAmt:''}"
+              placeholder="-"
+              title="${c.overridden?'رقم مُصحَّح يدوياً':'رقم البنك - قابل للتعديل'}"
+              data-atm="${atmId}" data-date="${c.d}"
+              onchange="saveBankOverride(this)"
+              onkeydown="if(event.key==='Enter'){this.blur()}"
+              class="num bank-override-input${c.overridden?' overridden':''}"
+              style="width:66px;padding:2px 4px;border:1px solid ${c.overridden?'#ffb74d':'#c8e6c9'};border-radius:4px;background:${c.overridden?'#fff3e0':'#f1f8f2'};color:${c.overridden?'#e65100':'#2e7d32'};font-weight:700;font-size:11.5px"
+            >
+            ${c.overridden ? `<button onclick="resetBankOverride('${atmId}','${c.d}')"
+              title="إلغاء التصحيح والرجوع لرقم البنك الأصلي"
+              style="border:none;background:none;cursor:pointer;padding:0 2px;font-size:12px;line-height:1;color:#e65100"
+            >↺</button>` : ''}
             ${c.bankAmt ? `<button onclick="autoFillEntry('${atmId}','${c.d}',${c.bankAmt},this)"
               title="ملء تلقائي من البنك"
               style="border:none;background:none;cursor:pointer;padding:1px 3px;font-size:13px;line-height:1;color:${bankFilled?'#2e7d32':'#aaa'};transition:0.15s"
@@ -928,7 +961,7 @@ function renderEntry() {
             data-atm="${atmId}" data-date="${c.d}"
             oninput="saveEntry(this)"
             onkeydown="handleEntryKeydown(event,this)"
-            style="width:115px${c.bankAmt===0?';opacity:0.5':''}"
+            style="width:115px"
             class="entry-input${bankFilled?' changed':''}"
           >
           ${c.bankAmt ? `<div class="entry-diff" style="font-size:11px;font-weight:700;margin-top:2px;color:#c62828">
@@ -1012,6 +1045,44 @@ function saveEntry(input) {
       }
     }
   }
+}
+
+function saveBankOverride(input) {
+  const atmId = input.dataset.atm;
+  const date  = input.dataset.date;
+
+  const raw = input.value;
+  const converted = toEnglishDigits(raw);
+  if (converted !== raw) input.value = converted;
+
+  if (!state.bankOverrides[atmId]) state.bankOverrides[atmId] = {};
+
+  if (converted.trim() === '') {
+    // مسح الحقل يدوياً يعني حذف رقم البنك لهذا اليوم (تصحيح = لا يوجد مبلغ)
+    state.bankOverrides[atmId][date] = 0;
+  } else {
+    const val = parseFloat(converted);
+    if (isNaN(val)) { renderEntry(); return; }
+    // إذا كانت القيمة المدخلة تطابق الرقم الأصلي من الملف، لا داعي لتخزين تصحيح
+    const original = getRawBankAmount(atmId, date);
+    if (original !== null && Math.abs(original - val) < 0.001) {
+      delete state.bankOverrides[atmId][date];
+      if (!Object.keys(state.bankOverrides[atmId]).length) delete state.bankOverrides[atmId];
+    } else {
+      state.bankOverrides[atmId][date] = val;
+    }
+  }
+  saveState();
+  renderEntry();
+}
+
+function resetBankOverride(atmId, date) {
+  if (state.bankOverrides[atmId]) {
+    delete state.bankOverrides[atmId][date];
+    if (!Object.keys(state.bankOverrides[atmId]).length) delete state.bankOverrides[atmId];
+  }
+  saveState();
+  renderEntry();
 }
 
 function autoFillEntry(atmId, date, bankAmt, btn) {
@@ -1538,7 +1609,7 @@ function importState(input) {
 
 function clearAllData() {
   if (!confirm('تحذير: سيتم مسح كل البيانات (ملفات البنك والإدخالات). هل أنت متأكد؟')) return;
-  state = { bankFiles:{}, branchData:{}, customAtms:{} };
+  state = { bankFiles:{}, branchData:{}, bankOverrides:{}, customAtms:{} };
   saveState();
   refreshAll();
   toast('تم مسح كل البيانات');
