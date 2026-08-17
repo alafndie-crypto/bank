@@ -82,7 +82,8 @@ select,input[type=date]{padding:7px 10px;border-radius:7px;border:1px solid #c5b
 .file-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid #e0dbd3;border-radius:8px;margin-bottom:8px;background:#fafaf8}
 .file-item .name{font-weight:600;font-size:12px}
 .file-item .period{font-size:11px;color:#888}
-.overflow{overflow-x:auto}
+.overflow{overflow:auto;max-height:calc(100vh - 300px);min-height:200px;border-radius:8px}
+@media (max-width:520px){.overflow{max-height:calc(100vh - 260px)}}
 .tbl-fixed{table-layout:fixed}
 .sticky-col{position:sticky;right:0;background:#fff;z-index:3;border-right:1px solid #e0dbd3}
 .branch-hdr .sticky-col{background:#e8f0f8}
