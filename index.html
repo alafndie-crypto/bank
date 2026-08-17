@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>مطابقة الصرافات - أصالة الهرم</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-size:13px;background:#f0ede8;color:#1a1917;direction:rtl;min-height:100vh}
+#header{background:#1a3a5c;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+#header h1{font-size:16px;font-weight:600;letter-spacing:0.5px}
+#header .sub{font-size:11px;opacity:0.7;margin-top:2px}
+#stats-bar{display:flex;gap:20px;font-size:11px}
+#stats-bar span{background:rgba(255,255,255,0.15);padding:4px 10px;border-radius:12px}
+.tabs{background:#fff;border-bottom:2px solid #e0dbd3;display:flex;padding:0 20px}
+.tab-btn{padding:12px 16px;cursor:pointer;font-size:13px;color:#888;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;font-family:inherit;transition:0.15s;white-space:nowrap}
+.tab-btn:hover{color:#333}
+.tab-btn.active{color:#1a3a5c;border-bottom-color:#1a3a5c;font-weight:600}
+.tab-content{display:none;padding:20px}
+.tab-content.active{display:block}
+.card{background:#fff;border:1px solid #e0dbd3;border-radius:10px;padding:16px;margin-bottom:14px}
+.card-title{font-size:13px;font-weight:600;color:#1a3a5c;margin-bottom:12px;border-bottom:1px solid #f0ede8;padding-bottom:8px}
+.btn{padding:8px 16px;border-radius:7px;border:1px solid #c5bfb7;background:#fff;color:#333;cursor:pointer;font-size:12px;font-family:inherit;transition:0.15s;white-space:nowrap}
+.btn:hover{background:#f5f2ee}
+.btn-primary{background:#1a3a5c;color:#fff;border-color:#1a3a5c}
+.btn-primary:hover{background:#15304d}
+.btn-success{background:#1a6644;color:#fff;border-color:#1a6644}
+.btn-success:hover{background:#15573a}
+.btn-danger{background:#fff;color:#c0392b;border-color:#c0392b}
+.btn-danger:hover{background:#fff5f5}
+.btn-sm{padding:5px 10px;font-size:11px}
+.dz{border:2px dashed #c5bfb7;border-radius:10px;padding:40px 20px;text-align:center;cursor:pointer;transition:0.2s;background:#fafaf8}
+.dz:hover,.dz.drag{border-color:#1a3a5c;background:#f0f4f9}
+.dz p{color:#888;margin:8px 0;font-size:13px}
+.dz .icon{font-size:36px;margin-bottom:8px}
+table{width:100%;border-collapse:collapse}
+th{background:#f5f2ee;padding:9px 10px;text-align:right;font-size:11px;font-weight:600;color:#555;border-bottom:2px solid #e0dbd3;white-space:nowrap;position:sticky;top:0;z-index:5}
+td{padding:8px 10px;border-bottom:1px solid #f0ede8;font-size:12px;vertical-align:middle}
+tr:hover td{background:#fafaf8}
+.branch-hdr td{background:#e8f0f8;font-weight:700;font-size:12px;color:#1a3a5c;border-bottom:1px solid #c5d9ee;position:sticky;top:37px;z-index:4}
+.atm-row td{padding:7px 10px}
+.totals-row td{background:#f0f4f0;font-weight:600;font-size:12px;border-top:2px solid #c5d9ee}
+input[type=number]{padding:5px 8px;border-radius:6px;border:1px solid #c5bfb7;font-size:12px;width:120px;text-align:left;direction:ltr;font-family:inherit;background:#fafff8;color:#1a1917}
+input[type=number]:focus{outline:none;border-color:#1a3a5c;box-shadow:0 0 0 2px rgba(26,58,92,0.1)}
+input[type=number].changed{background:#e8f5e9;border-color:#4caf50}
+select,input[type=date]{padding:7px 10px;border-radius:7px;border:1px solid #c5bfb7;background:#fff;color:#333;font-size:12px;font-family:inherit}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.badge-ok{background:#e8f5e9;color:#2e7d32}
+.badge-warn{background:#fff3e0;color:#e65100}
+.badge-err{background:#ffebee;color:#c62828}
+.badge-info{background:#e3f2fd;color:#1565c0}
+.badge-muted{background:#f5f5f5;color:#757575}
+.num{font-family:Tahoma,'Courier New',monospace;direction:ltr;text-align:left;display:inline-block}
+.num-pos{color:#2e7d32}
+.num-neg{color:#c62828}
+.num-zero{color:#888}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.summary-card{background:#fff;border:1px solid #e0dbd3;border-radius:10px;padding:14px;text-align:center}
+.summary-card .label{font-size:11px;color:#888;margin-bottom:6px}
+.summary-card .value{font-size:20px;font-weight:700;color:#1a3a5c;direction:ltr}
+.summary-card.green .value{color:#2e7d32}
+.summary-card.red .value{color:#c62828}
+.summary-card.orange .value{color:#e65100}
+.file-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid #e0dbd3;border-radius:8px;margin-bottom:8px;background:#fafaf8}
+.file-item .name{font-weight:600;font-size:12px}
+.file-item .period{font-size:11px;color:#888}
+.overflow{overflow-x:auto}
+.tbl-fixed{table-layout:fixed}
+.sticky-col{position:sticky;right:0;background:#fff;z-index:3;border-right:1px solid #e0dbd3}
+.branch-hdr .sticky-col{background:#e8f0f8}
+.totals-row .sticky-col{background:#f0f4f0}
+.section-title{font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:12px}
+.empty{text-align:center;padding:60px 20px;color:#aaa;font-size:13px}
+.empty .icon{font-size:40px;margin-bottom:12px}
+.unknown-list{background:#fff3e0;border:1px solid #ffe0b2;border-radius:8px;padding:12px;margin-bottom:14px}
+.unknown-list h4{color:#e65100;font-size:12px;margin-bottom:8px}
+.unknown-atm{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #ffb74d;border-radius:6px;padding:4px 10px;margin:3px;font-size:11px}
+.progress-bar{background:#e0dbd3;border-radius:4px;height:6px;margin-top:4px}
+.progress-fill{background:#1a3a5c;height:6px;border-radius:4px;transition:width 0.3s}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a3a5c;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;display:none;z-index:999;white-space:nowrap}
+.fl{display:flex}.ai{align-items:center}.jb{justify-content:space-between}.g8{gap:8px}.mb12{margin-bottom:12px}.mb8{margin-bottom:8px}
+.entry-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding:14px;background:#f5f2ee;border-radius:8px}
+input[type=text]{padding:7px 10px;border-radius:7px;border:1px solid #c5bfb7;background:#fff;color:#333;font-size:12px;font-family:inherit}
+.new-atm-form{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:11px;color:#666;font-weight:600}
+.autofill-btn:hover{color:#1a6644!important;transform:scale(1.2)}
+.autofill-btn{transition:transform 0.1s,color 0.15s}
+</style>
+</head>
+<body>
+<div id="header">
+  <div>
+    <div id="header-title">🏧 نظام مطابقة الصرافات</div>
+    <div class="sub">أصالة الهرم التجارية</div>
+  </div>
+  <div id="stats-bar">
+    <span id="hdr-files">0 ملفات</span>
+    <span id="hdr-atms">0 صرافة</span>
+    <span id="hdr-dates">لا توجد فترة</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('upload')">📁 ملفات البنك</button>
+  <button class="tab-btn" onclick="showTab('entry')">✏️ إدخال الفروع</button>
+  <button class="tab-btn" onclick="showTab('recon')">📊 المطابقة</button>
+  <button class="tab-btn" onclick="showTab('export')">💾 تصدير وإعدادات</button>
+</div>
+
+<!-- TAB 1: UPLOAD -->
+<div id="tab-upload" class="tab-content active">
+  <div class="card">
+    <div class="card-title">رفع ملفات البنك (كشف الحساب)</div>
+    <div class="dz" id="dz" onclick="document.getElementById('fileInput').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleDrop(event)">
+      <div class="icon">📂</div>
+      <p><strong>اسحب ملفات Excel هنا</strong> أو انقر للاختيار</p>
+      <p style="font-size:11px;color:#aaa">يمكنك رفع أكثر من ملف دفعة واحدة (.xlsx)</p>
+    </div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls" multiple style="display:none" onchange="handleFiles(this.files)">
+  </div>
+
+  <div id="files-list"></div>
+
+  <div class="card" id="unknown-card" style="display:none">
+    <div class="card-title">⚠️ صرافات غير معرّفة (موجودة في البنك وغير موجودة في الخريطة)</div>
+    <div id="unknown-container"></div>
+    <div style="margin-top:12px;font-size:11px;color:#888">يمكنك إضافة هذه الصرافات لفرع معين من تبويب "تصدير وإعدادات"</div>
+  </div>
+</div>
+
+<!-- TAB 2: ENTRY -->
+<div id="tab-entry" class="tab-content">
+  <div class="entry-controls">
+    <div class="form-group">
+      <label>عرض حسب</label>
+      <select id="entry-mode" onchange="renderEntry()">
+        <option value="date">تاريخ محدد</option>
+        <option value="range">نطاق تواريخ</option>
+        <option value="month">شهر كامل</option>
+      </select>
+    </div>
+    <div class="form-group" id="date-ctrl">
+      <label>التاريخ</label>
+      <input type="date" id="entry-date" onchange="renderEntry()">
+    </div>
+    <div class="form-group" id="range-ctrl" style="display:none">
+      <label>من</label>
+      <input type="date" id="entry-from" onchange="renderEntry()">
+    </div>
+    <div class="form-group" id="range-ctrl2" style="display:none">
+      <label>إلى</label>
+      <input type="date" id="entry-to" onchange="renderEntry()">
+    </div>
+    <div class="form-group" id="month-ctrl" style="display:none">
+      <label>الشهر</label>
+      <input type="month" id="entry-month" onchange="renderEntry()">
+    </div>
+    <div class="form-group">
+      <label>الفرع</label>
+      <select id="entry-branch" onchange="renderEntry()">
+        <option value="">كل الفروع</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" onclick="renderEntry()">عرض</button>
+    <button class="btn" onclick="clearEntryForPeriod()" title="مسح إدخالات الفترة الحالية">🗑 مسح الفترة</button>
+  </div>
+  <div id="entry-area">
+    <div class="empty"><div class="icon">📅</div>اختر فترة زمنية لبدء الإدخال</div>
+  </div>
+</div>
+
+<!-- TAB 3: RECONCILIATION -->
+<div id="tab-recon" class="tab-content">
+  <div class="fl ai jb mb12">
+    <div class="section-title">تقرير المطابقة</div>
+    <div class="fl g8">
+      <div class="form-group">
+        <label style="font-size:11px;color:#666;font-weight:600">الفترة</label>
+        <select id="recon-period" onchange="renderRecon()">
+          <option value="all">كل الفترات</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="renderRecon()">تحديث</button>
+    </div>
+  </div>
+  <div id="recon-summary" class="summary-grid"></div>
+  <div id="recon-area"></div>
+</div>
+
+<!-- TAB 4: EXPORT / ATM MANAGEMENT -->
+<div id="tab-export" class="tab-content">
+
+  <!-- ATM MANAGEMENT CARD -->
+  <div class="card">
+    <div class="card-title">⚙️ إدارة الصرافات</div>
+
+    <!-- Tabs inside card -->
+    <div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:2px solid #e8e3db;padding-bottom:0">
+      <button id="mgmt-tab-assign" onclick="switchMgmtTab('assign')"
+        style="padding:6px 14px;border:none;border-bottom:3px solid #5c8a5a;background:none;font-weight:700;color:#5c8a5a;cursor:pointer;font-size:12px">
+        ➕ إضافة / تحويل
+      </button>
+      <button id="mgmt-tab-remove" onclick="switchMgmtTab('remove')"
+        style="padding:6px 14px;border:none;border-bottom:3px solid transparent;background:none;font-weight:600;color:#999;cursor:pointer;font-size:12px">
+        🗑 حذف من تاريخ
+      </button>
+      <button id="mgmt-tab-list" onclick="switchMgmtTab('list')"
+        style="padding:6px 14px;border:none;border-bottom:3px solid transparent;background:none;font-weight:600;color:#999;cursor:pointer;font-size:12px">
+        📋 قائمة القواعد
+      </button>
+    </div>
+
+    <!-- ASSIGN / TRANSFER PANEL -->
+    <div id="mgmt-panel-assign">
+      <p style="font-size:11px;color:#666;margin-bottom:10px">
+        سواء كانت صرافة جديدة أو منقولة من فرع لآخر — حدد الفرع والتواريخ.
+        <br>تركت "حتى تاريخ" فارغاً = مفتوح (مستمر).
+        <br>الإدخالات السابقة قبل تاريخ التحويل تبقى في فرعها الأصلي.
+      </p>
+      <div class="new-atm-form" style="flex-wrap:wrap;gap:10px">
+        <div class="form-group">
+          <label>رقم الصرافة</label>
+          <input type="text" id="rule-atm-id" placeholder="مثال: 1140197" style="width:130px">
+        </div>
+        <div class="form-group">
+          <label>الفرع المستهدف</label>
+          <select id="rule-branch" style="width:160px">
+            <option value="">-- اختر فرعاً --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>من تاريخ</label>
+          <input type="date" id="rule-from" style="width:140px">
+        </div>
+        <div class="form-group">
+          <label>حتى تاريخ <span style="color:#aaa">(اختياري)</span></label>
+          <input type="date" id="rule-to" style="width:140px">
+        </div>
+        <div class="form-group">
+          <label style="visibility:hidden">تنفيذ</label>
+          <button class="btn btn-primary" onclick="addAtmRule('assign')">✅ تطبيق</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- REMOVE PANEL -->
+    <div id="mgmt-panel-remove" style="display:none">
+      <p style="font-size:11px;color:#666;margin-bottom:10px">
+        حذف صرافة من جميع الفروع ابتداءً من تاريخ معين.
+        <br>سيظل ظهورها في البنك موجوداً لكنها لن تُحسب في أي فرع.
+      </p>
+      <div class="new-atm-form" style="flex-wrap:wrap;gap:10px">
+        <div class="form-group">
+          <label>رقم الصرافة</label>
+          <input type="text" id="remove-atm-id" placeholder="مثال: 1140197" style="width:130px">
+        </div>
+        <div class="form-group">
+          <label>من تاريخ</label>
+          <input type="date" id="remove-from" style="width:140px">
+        </div>
+        <div class="form-group">
+          <label>حتى تاريخ <span style="color:#aaa">(اختياري)</span></label>
+          <input type="date" id="remove-to" style="width:140px">
+        </div>
+        <div class="form-group">
+          <label style="visibility:hidden">تنفيذ</label>
+          <button class="btn btn-danger" onclick="addAtmRule('remove')">🗑 تطبيق الحذف</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RULES LIST PANEL -->
+    <div id="mgmt-panel-list" style="display:none">
+      <div id="rules-list-content">
+        <p style="color:#aaa;font-size:12px">لا توجد قواعد مضافة بعد.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPORT CARD -->
+  <div class="card">
+    <div class="card-title">تصدير تقرير المطابقة</div>
+    <div class="fl ai g8 mb12">
+      <div class="form-group">
+        <label style="font-size:11px;color:#666;font-weight:600">الفترة</label>
+        <select id="export-period">
+          <option value="all">كل الفترات</option>
+        </select>
+      </div>
+      <button class="btn btn-success" onclick="exportToExcel()">📥 تصدير Excel</button>
+    </div>
+    <p style="font-size:11px;color:#888">سيتم تصدير ملف Excel يحتوي على: ملخص المطابقة لكل صرافة ولكل فرع مع الفروقات اليومية.</p>
+  </div>
+
+  <!-- DATA MANAGEMENT CARD -->
+  <div class="card">
+    <div class="card-title">إدارة البيانات</div>
+    <div class="fl g8">
+      <button class="btn" onclick="exportState()">💾 حفظ نسخة احتياطية</button>
+      <button class="btn" onclick="document.getElementById('importFile').click()">📂 استعادة نسخة</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importState(this)">
+      <button class="btn btn-danger" onclick="clearAllData()">🗑 مسح كل البيانات</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  ATM MAPPING (Branch → ATM IDs)
+// ═══════════════════════════════════════════════════════
+const DEFAULT_ATM_MAP = {
+  'القريات راقي':    ['1140197','1563546','1563547'],
+  'سكاكا 1':        ['1563531','1140221','1140223'],
+  'طبرجل الراقي':   ['1563564','1563562','1563563'],
+  'طبرجل المخفض':   ['1140200','1140196','1140201'],
+  'حائل برزان':     ['1140202','1140203','1140204','1140206'],
+  'طريف':           ['1140219','1140218','1607705','1140220'],
+  'حائل الدائري':   ['1140205','1140207','1140209','1140208'],
+  'رفحاء':          ['1140213','1140211','1140212'],
+  'عرعر 1':         ['1563550','1140217','1563551'],
+  'القريات مخفض':   ['1563544','1563545'],
+  'نجران 1':        ['1563536','1563537','1607746','1140216'],
+  'سكاكا 2':        ['1140222','1251275','1563530','1251276'],
+  'شرورة':          ['1251280','1563548','1563549'],
+  'رفحاء تونتي':    ['1554932','1554933','1554934','1554935','1554936'],
+  'عرعر تونتي':     ['1563552','1140210','1140199'],
+  'جدة الخمرة':     ['1424164','1424165','1424166','1424167'],
+  'نجران 2':        ['1140215','1140214']
+};
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let state = {
+  bankFiles:  {},  // { fileName: { data:{atmId:{date:amount}}, start, end } }
+  branchData: {},  // { atmId: { date: amount } }
+  customAtms: {},  // legacy compat
+  atmRules:   [],  // [ { id, atmId, branch, fromDate, toDate, op } ]
+  // op = 'assign'  → صرافة تنتمي لـ branch في النطاق
+  // op = 'remove'  → صرافة محذوفة من كل الفروع في النطاق
+};
+
+// ─── Rule helpers ────────────────────────────────────────
+function ruleActive(rule, date) {
+  if (rule.fromDate && date < rule.fromDate) return false;
+  if (rule.toDate   && date > rule.toDate)   return false;
+  return true;
+}
+
+// Branch of an ATM on a specific date (rules override default map)
+function getAtmBranchOnDate(atmId, date) {
+  // Check rules in reverse order (latest rule wins)
+  const rules = (state.atmRules || []).filter(r => r.atmId === atmId && ruleActive(r, date));
+  if (rules.length) {
+    const last = rules[rules.length - 1];
+    return last.op === 'remove' ? null : last.branch;
+  }
+  // Legacy customAtms
+  if (state.customAtms[atmId]) return state.customAtms[atmId];
+  // Default map
+  for (const [branch, atms] of Object.entries(DEFAULT_ATM_MAP)) {
+    if (atms.includes(atmId)) return branch;
+  }
+  return null;
+}
+
+// Reverse lookup without date (used for display, picks any active assignment)
+function getAtmBranch(atmId) {
+  const rules = (state.atmRules || []).filter(r => r.atmId === atmId && r.op === 'assign');
+  if (rules.length) return rules[rules.length - 1].branch;
+  if (state.customAtms[atmId]) return state.customAtms[atmId];
+  for (const [branch, atms] of Object.entries(DEFAULT_ATM_MAP)) {
+    if (atms.includes(atmId)) return branch;
+  }
+  return null;
+}
+
+// All known ATMs with at least one assignment (default + rules + legacy)
+function getAllKnownAtms() {
+  const ids = new Set();
+  for (const atms of Object.values(DEFAULT_ATM_MAP)) atms.forEach(id => ids.add(id));
+  for (const id of Object.keys(state.customAtms)) ids.add(id);
+  for (const r of (state.atmRules || [])) if (r.atmId) ids.add(r.atmId);
+  return [...ids];
+}
+
+// Build a date-aware map: { branch: [atmId, ...] } considering all dates in range
+function getFullAtmMap(dates) {
+  // dates optional – if provided, only include ATMs active in those dates
+  const map = {};
+
+  // Seed with default map entries (ATMs not overridden by any rule are always in their default branch)
+  for (const [branch, atms] of Object.entries(DEFAULT_ATM_MAP)) {
+    for (const atmId of atms) {
+      // check if any 'remove' rule covers ALL dates, or any 'assign' to different branch
+      const hasRule = (state.atmRules || []).some(r => r.atmId === atmId);
+      if (!hasRule) {
+        if (!map[branch]) map[branch] = [];
+        if (!map[branch].includes(atmId)) map[branch].push(atmId);
+      }
+    }
+  }
+
+  // Apply rules
+  const rules = state.atmRules || [];
+  const allRuleAtms = [...new Set(rules.map(r => r.atmId))];
+  for (const atmId of allRuleAtms) {
+    // Get all branches this ATM is assigned to (can be multiple for different date ranges)
+    const atmRules = rules.filter(r => r.atmId === atmId && r.op === 'assign');
+    for (const r of atmRules) {
+      const branch = r.branch;
+      if (!map[branch]) map[branch] = [];
+      if (!map[branch].includes(atmId)) map[branch].push(atmId);
+    }
+    // Also check if it has a default branch for dates not covered by rules
+    for (const [branch, atms] of Object.entries(DEFAULT_ATM_MAP)) {
+      if (atms.includes(atmId)) {
+        // Find dates not covered by any rule
+        const hasFullCoverage = !dates || dates.some(d => {
+          const activeRules = rules.filter(r2 => r2.atmId === atmId && ruleActive(r2, d));
+          return activeRules.length === 0; // date not covered by any rule → default applies
+        });
+        if (hasFullCoverage) {
+          if (!map[branch]) map[branch] = [];
+          if (!map[branch].includes(atmId)) map[branch].push(atmId);
+        }
+      }
+    }
+    // Legacy customAtms
+    if (state.customAtms[atmId]) {
+      const branch = state.customAtms[atmId];
+      if (!map[branch]) map[branch] = [];
+      if (!map[branch].includes(atmId)) map[branch].push(atmId);
+    }
+  }
+
+  return map;
+}
+
+// Compute merged bank data
+function getBankData() {
+  const result = {};
+  for (const file of Object.values(state.bankFiles)) {
+    for (const [atmId, dates] of Object.entries(file.data)) {
+      if (!result[atmId]) result[atmId] = {};
+      for (const [date, amt] of Object.entries(dates)) {
+        result[atmId][date] = (result[atmId][date] || 0) + amt;
+      }
+    }
+  }
+  return result;
+}
+
+// Get all dates across bank data
+function getAllDates() {
+  const bd = getBankData();
+  const set = new Set();
+  for (const dates of Object.values(bd)) {
+    for (const d of Object.keys(dates)) set.add(d);
+  }
+  return [...set].sort();
+}
+
+// Unknown ATMs (in bank but no branch mapping on any date)
+function getUnknownAtms() {
+  const bd = getBankData();
+  const dates = getAllDates();
+  return Object.keys(bd).filter(id => {
+    return !dates.some(d => getAtmBranchOnDate(id, d) !== null);
+  });
+}
+
+// ─── Build per-branch per-date view (date-aware) ──────────
+// Returns { branch: { atmId: { date: bankAmt } } } filtered by date-aware rules
+function getBranchDateMap(dates) {
+  const bd = getBankData();
+  const result = {}; // { branch: { atmId: { date: amt } } }
+
+  for (const [atmId, dateMap] of Object.entries(bd)) {
+    for (const date of (dates || Object.keys(dateMap))) {
+      if (!dateMap[date]) continue;
+      const branch = getAtmBranchOnDate(atmId, date);
+      if (!branch) continue; // removed on this date
+      if (!result[branch]) result[branch] = {};
+      if (!result[branch][atmId]) result[branch][atmId] = {};
+      result[branch][atmId][date] = (result[branch][atmId][date] || 0) + dateMap[date];
+    }
+  }
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════
+//  PERSISTENCE
+// ═══════════════════════════════════════════════════════
+function saveState() {
+  try {
+    localStorage.setItem('atm_recon_v2', JSON.stringify(state));
+  } catch(e) {
+    toast('تحذير: فشل حفظ البيانات محلياً (ربما المساحة ممتلئة)، استخدم النسخة الاحتياطية', 4000);
+  }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem('atm_recon_v2');
+    if (raw) {
+      const s = JSON.parse(raw);
+      state.bankFiles  = s.bankFiles  || {};
+      state.branchData = s.branchData || {};
+      state.customAtms = s.customAtms || {};
+      state.atmRules   = s.atmRules   || [];
+    }
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════
+//  FILE PARSING
+// ═══════════════════════════════════════════════════════
+async function parseBankFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+
+        let headerIdx = -1, colDate = -1, colCredit = -1, colDebit = -1, colDesc = -1;
+
+        for (let i = 0; i < Math.min(rows.length, 25); i++) {
+          const row = rows[i].map(c => String(c).trim());
+          const di = row.findIndex(c => c.includes('التاريخ الميلادي'));
+          if (di >= 0) {
+            headerIdx = i; colDate = di;
+            colCredit = row.findIndex(c => c === 'دائن');
+            colDebit  = row.findIndex(c => c === 'مدين');
+            // Description with P1 Term — find which تفاصيل column has it
+            const descCols = [];
+            row.forEach((c,j) => { if (c.includes('تفاصيل')) descCols.push(j); });
+            // Check first data row to find which one has "Term"
+            if (i+1 < rows.length) {
+              for (const dc of descCols) {
+                if (String(rows[i+1][dc]).includes('Term')) { colDesc = dc; break; }
+              }
+            }
+            if (colDesc < 0) colDesc = descCols[descCols.length - 1] || -1;
+            break;
+          }
+        }
+
+        if (headerIdx < 0 || colDate < 0) {
+          reject(new Error('لم يتم التعرف على تنسيق الملف'));
+          return;
+        }
+
+        const data = {};
+        let minDate = '', maxDate = '';
+
+        // يوجد داخل عمود التفاصيل الطويل (K) تاريخان بصيغة MM/DD HH:MM:SS مفصولان بـ "-":
+        // الأول (يسار) هو تاريخ بداية الجلسة، والثاني (يمين) هو تاريخ آخر عملية/إغلاق الجلسة.
+        // نعتمد التاريخ الثاني (الأيمن) لأنه التاريخ الفعلي الأخير لتشغيل الصرافة.
+        const K_DATE_PATTERN = /(\d{2})\/(\d{2})\s+\d{2}:\d{2}:\d{2}\s*-\s*(\d{2})\/(\d{2})\s+\d{2}:\d{2}:\d{2}/;
+
+        // نبني التاريخ الكامل (بالسنة) بالاستناد لسنة "التاريخ الميلادي" (عمود L) مع تصحيح
+        // عبور نهاية السنة (مثلاً L=يناير و التاريخ المستخرج=ديسمبر → السنة السابقة، والعكس).
+        function buildIsoFromK(ldateStr, kMonth, kDay) {
+          const lp = ldateStr.split('/');
+          if (lp.length !== 3) return null;
+          const ldMonth = parseInt(lp[1], 10);
+          let year = parseInt(lp[2], 10);
+          const diff = kMonth - ldMonth;
+          if (diff > 6) year -= 1;
+          else if (diff < -6) year += 1;
+          return `${year}-${String(kMonth).padStart(2,'0')}-${String(kDay).padStart(2,'0')}`;
+        }
+
+        for (let i = headerIdx + 1; i < rows.length; i++) {
+          const row = rows[i];
+          const dateStr = String(row[colDate] || '').trim();
+          const credit  = parseFloat(String(row[colCredit] || '0').replace(/,/g,'')) || 0;
+          const desc    = colDesc >= 0 ? String(row[colDesc] || '').trim() : '';
+
+          if (!dateStr || !desc) continue;
+          // نتجاهل عمود المدين تماماً (العمولات وغيرها) ونعتمد الدائن فقط
+          if (credit <= 0) continue;
+
+          const termMatch = desc.match(/Term\s+(\d{10,16})/i);
+          if (!termMatch) continue;
+
+          const atmId = termMatch[1].slice(-7);
+
+          // استخراج التاريخ الفعلي (الأيمن) من نص التفاصيل، مع رجوع احتياطي لعمود L
+          let isoDate = null;
+          const km = desc.match(K_DATE_PATTERN);
+          if (km) {
+            const kMonth = parseInt(km[3], 10), kDay = parseInt(km[4], 10);
+            isoDate = buildIsoFromK(dateStr, kMonth, kDay);
+          }
+          if (!isoDate) {
+            // Fallback: DD/MM/YYYY من عمود التاريخ الميلادي
+            const parts = dateStr.split('/');
+            if (parts.length !== 3) continue;
+            isoDate = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+          }
+
+          // تجميع أكثر من عملية لنفس الصرافة بنفس التاريخ (نادراً ما ينزل مبلغين لنفس الصرافة بنفس اليوم)
+          if (!data[atmId]) data[atmId] = {};
+          data[atmId][isoDate] = (data[atmId][isoDate] || 0) + credit;
+
+          if (!minDate || isoDate < minDate) minDate = isoDate;
+          if (!maxDate || isoDate > maxDate) maxDate = isoDate;
+        }
+
+        resolve({ data, start: minDate, end: maxDate });
+      } catch(err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(new Error('خطأ في قراءة الملف'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  UPLOAD HANDLING
+// ═══════════════════════════════════════════════════════
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dz').classList.remove('drag');
+  handleFiles(e.dataTransfer.files);
+}
+
+async function handleFiles(files) {
+  const arr = [...files].filter(f => f.name.match(/\.xlsx?$/i));
+  if (!arr.length) { toast('يرجى اختيار ملفات Excel (.xlsx)'); return; }
+
+  for (const file of arr) {
+    toast(`جاري معالجة: ${file.name}...`, 60000);
+    try {
+      const result = await parseBankFile(file);
+      state.bankFiles[file.name] = { data: result.data, start: result.start, end: result.end };
+      toast(`✅ تم رفع: ${file.name} (${result.start} → ${result.end})`);
+    } catch(e) {
+      toast(`❌ خطأ في ${file.name}: ${e.message}`, 4000);
+    }
+  }
+  saveState();
+  refreshAll();
+}
+
+// ═══════════════════════════════════════════════════════
+//  TAB NAVIGATION
+// ═══════════════════════════════════════════════════════
+function showTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelector(`[onclick="showTab('${tab}')"]`).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'recon')   renderRecon();
+  if (tab === 'entry')   renderEntry();
+  if (tab === 'export')  renderExportTab();
+}
+
+// ═══════════════════════════════════════════════════════
+//  UPLOAD TAB RENDER
+// ═══════════════════════════════════════════════════════
+function renderUploadTab() {
+  const files = Object.entries(state.bankFiles);
+  const el = document.getElementById('files-list');
+
+  if (!files.length) {
+    el.innerHTML = '';
+    document.getElementById('unknown-card').style.display = 'none';
+    return;
+  }
+
+  el.innerHTML = `<div class="card"><div class="card-title">الملفات المرفوعة (${files.length})</div>
+  ${files.map(([name, f]) => `
+    <div class="file-item">
+      <div>
+        <div class="name">📄 ${name}</div>
+        <div class="period">الفترة: ${fmtDate(f.start)} → ${fmtDate(f.end)}</div>
+        <div class="period" style="margin-top:3px">
+          عدد الصرافات: ${Object.keys(f.data).length} |
+          إجمالي الأيام: ${[...new Set(Object.values(f.data).flatMap(d=>Object.keys(d)))].length}
+        </div>
+      </div>
+      <button class="btn btn-sm btn-danger" onclick="removeFile('${name.replace(/'/g,"\\'")}')">✕ حذف</button>
+    </div>
+  `).join('')}
+  </div>`;
+
+  // Unknown ATMs
+  const unknowns = getUnknownAtms();
+  const uc = document.getElementById('unknown-card');
+  const ucont = document.getElementById('unknown-container');
+  if (unknowns.length) {
+    uc.style.display = 'block';
+    const bd = getBankData();
+    ucont.innerHTML = unknowns.map(id => {
+      const total = Object.values(bd[id]).reduce((a,b) => a+b, 0);
+      return `<span class="unknown-atm">📟 ${id} <span style="color:#888;font-size:10px">${fmt(total)} ر.س</span></span>`;
+    }).join('');
+  } else {
+    uc.style.display = 'none';
+  }
+}
+
+function removeFile(name) {
+  if (!confirm(`هل تريد حذف ملف: ${name}؟`)) return;
+  delete state.bankFiles[name];
+  saveState();
+  refreshAll();
+  toast('تم حذف الملف');
+}
+
+// ═══════════════════════════════════════════════════════
+//  ENTRY TAB
+// ═══════════════════════════════════════════════════════
+function setupEntryControls() {
+  const modeEl = document.getElementById('entry-mode');
+  const branchEl = document.getElementById('entry-branch');
+
+  // Populate branches (date-aware: use all dates available)
+  const allDates = getAllDates();
+  const branchDateMap0 = getBranchDateMap(allDates.length ? allDates : null);
+  const allBranches = allDates.length
+    ? Object.keys(branchDateMap0)
+    : Object.keys(DEFAULT_ATM_MAP);
+  branchEl.innerHTML = '<option value="">كل الفروع</option>' +
+    allBranches.sort().map(b => `<option value="${b}">${b}</option>`).join('');
+
+  // Set default date to first date in bank data
+  const dates = getAllDates();
+  if (dates.length) {
+    document.getElementById('entry-date').value = dates[0];
+    document.getElementById('entry-from').value = dates[0];
+    document.getElementById('entry-to').value = dates[dates.length-1];
+    const m = dates[0].slice(0,7);
+    const monthEl = document.getElementById('entry-month');
+    if (monthEl) monthEl.value = m;
+  }
+
+  modeEl.onchange = () => {
+    const mode = modeEl.value;
+    document.getElementById('date-ctrl').style.display   = mode==='date'  ?'flex':'none';
+    document.getElementById('range-ctrl').style.display  = mode==='range' ?'flex':'none';
+    document.getElementById('range-ctrl2').style.display = mode==='range' ?'flex':'none';
+    document.getElementById('month-ctrl').style.display  = mode==='month' ?'flex':'none';
+    renderEntry();
+  };
+}
+
+function getEntryDates() {
+  const mode = document.getElementById('entry-mode').value;
+  const allDates = getAllDates();
+  if (!allDates.length) return [];
+
+  if (mode === 'date') {
+    const d = document.getElementById('entry-date').value;
+    return d ? [d] : [];
+  } else if (mode === 'range') {
+    const from = document.getElementById('entry-from').value;
+    const to   = document.getElementById('entry-to').value;
+    if (!from || !to) return [];
+    return allDates.filter(d => d >= from && d <= to);
+  } else {
+    const m = document.getElementById('entry-month').value;
+    if (!m) return [];
+    return allDates.filter(d => d.startsWith(m));
+  }
+}
+
+function renderEntry() {
+  const dates = getEntryDates();
+  const selectedBranch = document.getElementById('entry-branch').value;
+  const bd = getBankData();
+  // Use date-aware branch map
+  const branchDateMap = getBranchDateMap(dates); // { branch: { atmId: { date: amt } } }
+  const atmMap = {};
+  for (const [branch, atms] of Object.entries(branchDateMap)) {
+    atmMap[branch] = Object.keys(atms);
+  }
+  const area = document.getElementById('entry-area');
+
+  if (!dates.length) {
+    area.innerHTML = '<div class="empty"><div class="icon">📅</div>لا توجد بيانات بنكية للفترة المختارة. ارفع ملفات البنك أولاً.</div>';
+    return;
+  }
+
+  const branches = selectedBranch ? {[selectedBranch]: atmMap[selectedBranch]||[]} : atmMap;
+
+  // Limit columns for readability
+  const MAX_COLS = 15;
+  let html = '';
+
+  if (dates.length > MAX_COLS) {
+    html += `<div style="background:#fff3e0;border:1px solid #ffe0b2;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#e65100">
+      ⚠️ الفترة المختارة تحتوي ${dates.length} يوماً. يُعرض منها ${MAX_COLS} يوم فقط. اختر نطاقاً أضيق لعرض كامل.
+    </div>`;
+  }
+  const visibleDates = dates.slice(0, MAX_COLS);
+
+  html += `<div class="overflow"><table>
+    <thead><tr>
+      <th class="sticky-col" style="width:90px;min-width:90px">الفرع</th>
+      <th style="width:80px;min-width:80px">الصرافة</th>
+      ${visibleDates.map(d => `<th style="text-align:center;min-width:130px">${fmtDateShort(d)}</th>`).join('')}
+      <th style="text-align:center;min-width:110px">إجمالي البنك</th>
+      <th style="text-align:center;min-width:110px">إجمالي الفرع</th>
+      <th style="text-align:center;min-width:100px">الفارق</th>
+    </tr></thead><tbody>`;
+
+  for (const [branch, atms] of Object.entries(branches)) {
+    if (!atms || !atms.length) continue;
+
+    // Check if this branch has any bank data in the period
+    const hasData = atms.some(id => visibleDates.some(d => (bd[id]||{})[d]));
+    if (!hasData && selectedBranch !== branch) continue;
+
+    let branchBankTotal = 0, branchBranchTotal = 0;
+
+    const atmRows = atms.map(atmId => {
+      let atmBankTotal = 0, atmBranchTotal = 0;
+      const cells = visibleDates.map(d => {
+        // Only show bank amount if ATM is assigned to this branch on this date
+        const atmBranch = getAtmBranchOnDate(atmId, d);
+        const bankAmt = (atmBranch === branch) ? ((bd[atmId]||{})[d] || 0) : 0;
+        const branchAmt = (state.branchData[atmId]||{})[d] || 0;
+        if (bankAmt) atmBankTotal += bankAmt;
+        if (branchAmt) atmBranchTotal += branchAmt;
+        const diff = bankAmt - branchAmt;
+        // Mark as inactive date (ATM not in this branch on this date)
+        const inactive = !bankAmt && (bd[atmId]||{})[d];
+        return { bankAmt, branchAmt, diff, d, inactive };
+      });
+      branchBankTotal += atmBankTotal;
+      branchBranchTotal += atmBranchTotal;
+      const atmDiff = atmBankTotal - atmBranchTotal;
+
+      return `<tr class="atm-row">
+        <td class="sticky-col" style="color:#888;font-size:11px"></td>
+        <td><span class="badge badge-info">📟 ${atmId}</span></td>
+        ${cells.map(c => {
+          const currentVal = (state.branchData[atmId]||{})[c.d] || 0;
+          const isMatched = c.bankAmt && Math.abs(c.bankAmt - currentVal) < 0.01;
+          const bankFilled = c.bankAmt && currentVal && Math.abs(currentVal - c.bankAmt) < 0.01;
+          return `<td style="padding:4px 6px">
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
+            <span style="font-size:11px;color:#888">بنك: <span class="num">${c.bankAmt?fmt(c.bankAmt):'-'}</span></span>
+            ${c.bankAmt ? `<button onclick="autoFillEntry('${atmId}','${c.d}',${c.bankAmt},this)"
+              title="ملء تلقائي من البنك"
+              style="border:none;background:none;cursor:pointer;padding:1px 3px;font-size:13px;line-height:1;color:${bankFilled?'#2e7d32':'#aaa'};transition:0.15s"
+              class="autofill-btn"
+            >${bankFilled ? '✅' : '☑'}</button>` : ''}
+          </div>
+          <input type="number" step="0.01" value="${currentVal||''}"
+            placeholder="أدخل المبلغ"
+            data-atm="${atmId}" data-date="${c.d}"
+            oninput="saveEntry(this)"
+            onkeydown="handleEntryKeydown(event,this)"
+            style="width:115px${c.bankAmt===0?';opacity:0.5':''}"
+            class="entry-input${bankFilled?' changed':''}"
+          >
+          ${c.bankAmt ? `<div style="font-size:10px;margin-top:2px;${Math.abs(c.diff)<0.01&&currentVal?'color:#2e7d32':c.diff>0?'color:#e65100':'color:#c62828'}">
+            فارق: ${Math.abs(c.diff)<0.01&&currentVal?'✓ متطابق':currentVal?fmt(c.diff):'—'}
+          </div>` : ''}
+        </td>`;
+        }).join('')}
+        <td style="text-align:center"><span class="num">${fmt(atmBankTotal)}</span></td>
+        <td style="text-align:center"><span class="num">${fmt(atmBranchTotal)}</span></td>
+        <td style="text-align:center"><span class="num ${atmDiff>0.01?'num-neg':atmDiff<-0.01?'num-pos':'num-zero'}">${Math.abs(atmDiff)<0.01?'✓':fmt(atmDiff)}</span></td>
+      </tr>`;
+    }).join('');
+
+    const bDiff = branchBankTotal - branchBranchTotal;
+    html += `<tr class="branch-hdr">
+      <td class="sticky-col" colspan="2">📍 ${branch}</td>
+      ${visibleDates.map(() => '<td></td>').join('')}
+      <td style="text-align:center"><strong>${fmt(branchBankTotal)}</strong></td>
+      <td style="text-align:center"><strong>${fmt(branchBranchTotal)}</strong></td>
+      <td style="text-align:center"><strong class="${bDiff>0.01?'num-neg':bDiff<-0.01?'num-pos':'num-zero'}">${Math.abs(bDiff)<0.01?'✓ متطابق':fmt(bDiff)}</strong></td>
+    </tr>${atmRows}`;
+  }
+
+  html += '</tbody></table></div>';
+  area.innerHTML = html;
+}
+
+function saveEntry(input) {
+  const atmId = input.dataset.atm;
+  const date  = input.dataset.date;
+  const val   = parseFloat(input.value) || 0;
+  if (!state.branchData[atmId]) state.branchData[atmId] = {};
+  if (val) {
+    state.branchData[atmId][date] = val;
+    input.classList.add('changed');
+  } else {
+    delete state.branchData[atmId][date];
+    input.classList.remove('changed');
+  }
+  saveState();
+  // Update the autofill button state
+  const td = input.closest('td');
+  if (td) {
+    const btn = td.querySelector('.autofill-btn');
+    if (btn) {
+      const bankAmtMatch = btn.getAttribute('onclick').match(/autoFillEntry\('[^']+','[^']+',([^,]+),/);
+      if (bankAmtMatch) {
+        const bankAmt = parseFloat(bankAmtMatch[1]);
+        const isMatch = Math.abs(val - bankAmt) < 0.01 && val > 0;
+        btn.textContent = isMatch ? '✅' : '☑';
+        btn.style.color = isMatch ? '#2e7d32' : '#aaa';
+      }
+    }
+    // Update diff display
+    const diffDiv = td.querySelector('div[style*="font-size:10px"]');
+    if (diffDiv) {
+      const bankAmtMatch2 = td.querySelector('.autofill-btn')?.getAttribute('onclick')?.match(/autoFillEntry\('[^']+','[^']+',([^,]+),/);
+      if (bankAmtMatch2) {
+        const bankAmt = parseFloat(bankAmtMatch2[1]);
+        const diff = bankAmt - val;
+        if (Math.abs(diff) < 0.01 && val) {
+          diffDiv.style.color = '#2e7d32';
+          diffDiv.textContent = 'فارق: ✓ متطابق';
+        } else if (val) {
+          diffDiv.style.color = diff > 0 ? '#e65100' : '#c62828';
+          diffDiv.textContent = 'فارق: ' + fmt(diff);
+        } else {
+          diffDiv.textContent = 'فارق: —';
+        }
+      }
+    }
+  }
+}
+
+function autoFillEntry(atmId, date, bankAmt, btn) {
+  if (!state.branchData[atmId]) state.branchData[atmId] = {};
+  const currentVal = state.branchData[atmId][date] || 0;
+  // Toggle: if already filled with bank amount, clear it
+  if (Math.abs(currentVal - bankAmt) < 0.01) {
+    delete state.branchData[atmId][date];
+    btn.textContent = '☑';
+    btn.style.color = '#aaa';
+    const input = btn.closest('td').querySelector('input');
+    if (input) { input.value = ''; input.classList.remove('changed'); }
+    const diffDiv = btn.closest('td').querySelector('div[style*="font-size:10px"]');
+    if (diffDiv) { diffDiv.textContent = 'فارق: —'; diffDiv.style.color = '#e65100'; }
+  } else {
+    state.branchData[atmId][date] = bankAmt;
+    btn.textContent = '✅';
+    btn.style.color = '#2e7d32';
+    const input = btn.closest('td').querySelector('input');
+    if (input) { input.value = bankAmt; input.classList.add('changed'); }
+    const diffDiv = btn.closest('td').querySelector('div[style*="font-size:10px"]');
+    if (diffDiv) { diffDiv.textContent = 'فارق: ✓ متطابق'; diffDiv.style.color = '#2e7d32'; }
+  }
+  saveState();
+}
+
+function handleEntryKeydown(e, input) {
+  // Get all entry inputs in DOM order
+  const allInputs = Array.from(document.querySelectorAll('#entry-area input.entry-input'));
+  const idx = allInputs.indexOf(input);
+  if (idx < 0) return;
+
+  const atmId = input.dataset.atm;
+  const date  = input.dataset.date;
+
+  // Collect inputs for same date (column) and same atm (row)
+  const sameDateInputs = allInputs.filter(i => i.dataset.date === date);
+  const sameAtmInputs  = allInputs.filter(i => i.dataset.atm === atmId);
+
+  const posInDate = sameDateInputs.indexOf(input);
+  const posInAtm  = sameAtmInputs.indexOf(input);
+
+  let target = null;
+
+  if (e.key === 'Enter' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    // Move to next ATM in same date column
+    if (posInDate < sameDateInputs.length - 1) {
+      target = sameDateInputs[posInDate + 1];
+    } else {
+      // Move to first ATM in next date column
+      const dates = [...new Set(allInputs.map(i => i.dataset.date))].sort();
+      const dateIdx = dates.indexOf(date);
+      if (dateIdx < dates.length - 1) {
+        const nextDate = dates[dateIdx + 1];
+        const nextDateInputs = allInputs.filter(i => i.dataset.date === nextDate);
+        target = nextDateInputs[0] || null;
+      }
+    }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (posInDate > 0) {
+      target = sameDateInputs[posInDate - 1];
+    }
+  } else if (e.key === 'ArrowRight') {
+    e.preventDefault();
+    // Move to next date for same ATM
+    if (posInAtm > 0) {
+      target = sameAtmInputs[posInAtm - 1];
+    }
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    if (posInAtm < sameAtmInputs.length - 1) {
+      target = sameAtmInputs[posInAtm + 1];
+    }
+  }
+
+  if (target) {
+    target.focus();
+    target.select();
+  }
+}
+
+function clearEntryForPeriod() {
+  const dates = getEntryDates();
+  if (!dates.length) return;
+  if (!confirm(`هل تريد مسح إدخالات الفترة (${dates.length} يوم)؟`)) return;
+  for (const atmId of Object.keys(state.branchData)) {
+    for (const d of dates) {
+      delete state.branchData[atmId][d];
+    }
+  }
+  saveState();
+  renderEntry();
+  toast('تم مسح الإدخالات');
+}
+
+// ═══════════════════════════════════════════════════════
+//  RECONCILIATION TAB
+// ═══════════════════════════════════════════════════════
+function renderRecon() {
+  const bd = getBankData();
+  const periodSel = document.getElementById('recon-period').value;
+
+  let dates = getAllDates();
+  if (periodSel !== 'all') {
+    dates = dates.filter(d => d.startsWith(periodSel));
+  }
+
+  // Build date-aware branch map for selected dates
+  const branchDateMap = getBranchDateMap(dates); // { branch: { atmId: { date: amt } } }
+
+  // Summary stats
+  let totalBank = 0, totalBranch = 0, matchedAtms = 0, totalAtmCount = 0;
+  for (const [branch, atms] of Object.entries(branchDateMap)) {
+    for (const [atmId, dateMap] of Object.entries(atms)) {
+      const bankTotal   = Object.values(dateMap).reduce((s,v) => s+v, 0);
+      const branchTotal = dates.reduce((s,d) => s + ((state.branchData[atmId]||{})[d]||0), 0);
+      totalBank += bankTotal;
+      totalBranch += branchTotal;
+      if (bankTotal > 0) {
+        totalAtmCount++;
+        if (Math.abs(bankTotal - branchTotal) < 0.01) matchedAtms++;
+      }
+    }
+  }
+  const totalDiff = totalBank - totalBranch;
+  // Build a simple atmMap from branchDateMap for table rendering
+  const atmMap = {};
+  for (const [branch, atms] of Object.entries(branchDateMap)) {
+    atmMap[branch] = Object.keys(atms);
+  }
+
+  document.getElementById('recon-summary').innerHTML = `
+    <div class="summary-card"><div class="label">إجمالي البنك</div><div class="value">${fmt(totalBank)}</div><div style="font-size:10px;color:#888;margin-top:3px">ريال سعودي</div></div>
+    <div class="summary-card"><div class="label">إجمالي الفروع</div><div class="value">${fmt(totalBranch)}</div><div style="font-size:10px;color:#888;margin-top:3px">ريال سعودي</div></div>
+    <div class="summary-card ${Math.abs(totalDiff)<0.01?'green':totalDiff>0?'red':'orange'}">
+      <div class="label">${Math.abs(totalDiff)<0.01?'✅ متطابق':totalDiff>0?'⚠️ عجز (البنك أكثر)':'⚠️ زيادة (الفرع أكثر)'}</div>
+      <div class="value">${Math.abs(totalDiff)<0.01?'صفر':fmt(Math.abs(totalDiff))}</div>
+    </div>
+    <div class="summary-card"><div class="label">صرافات متطابقة</div><div class="value">${matchedAtms} / ${totalAtmCount}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${totalAtmCount?Math.round(matchedAtms/totalAtmCount*100):0}%"></div></div>
+    </div>
+  `;
+
+  let html = '<div class="overflow"><table>';
+  html += `<thead><tr>
+    <th class="sticky-col" style="width:120px">الفرع</th>
+    <th style="width:85px">الصرافة</th>
+    <th style="text-align:center">إجمالي البنك</th>
+    <th style="text-align:center">إجمالي الفرع</th>
+    <th style="text-align:center">الفارق</th>
+    <th style="text-align:center">الحالة</th>
+    <th style="text-align:center">أيام البنك</th>
+    <th style="text-align:center">أيام مُدخلة</th>
+  </tr></thead><tbody>`;
+
+  let grandBankTotal = 0, grandBranchTotal = 0;
+
+  for (const [branch, atmDateData] of Object.entries(branchDateMap)) {
+    const branchAtms = Object.keys(atmDateData);
+    if (!branchAtms.length) continue;
+
+    let branchBank = 0, branchBranch = 0;
+    const atmRows = branchAtms.map(atmId => {
+      // Bank total: only dates this ATM was assigned to THIS branch
+      const atmDates = Object.keys(atmDateData[atmId] || {});
+      const bankTotal   = Object.values(atmDateData[atmId] || {}).reduce((s,v)=>s+v, 0);
+      // Branch total: only the same dates
+      const branchTotal = atmDates.reduce((s,d) => s + ((state.branchData[atmId]||{})[d]||0), 0);
+      const diff = bankTotal - branchTotal;
+      branchBank += bankTotal;
+      branchBranch += branchTotal;
+      const bankDays   = atmDates.length;
+      const branchDays = atmDates.filter(d => (state.branchData[atmId]||{})[d]).length;
+      const status = bankTotal===0 ? 'لا بيانات' : Math.abs(diff)<0.01 ? 'متطابق' : diff>0 ? 'عجز' : 'زيادة';
+      const statusBadge = `<span class="badge badge-${status==='متطابق'?'ok':status==='لا بيانات'?'muted':'err'}">${status}</span>`;
+      // Show transfer badge if ATM has rules
+      const hasRule = (state.atmRules||[]).some(r => r.atmId === atmId);
+      const transferBadge = hasRule ? `<span style="font-size:9px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;border-radius:4px;padding:1px 5px;margin-right:4px">🔄 منقولة</span>` : '';
+      return `<tr class="atm-row" onclick="toggleAtmDetail('${atmId}')" style="cursor:pointer">
+        <td class="sticky-col" style="color:#aaa;font-size:10px"></td>
+        <td>${transferBadge}<span class="badge badge-info">📟 ${atmId}</span></td>
+        <td style="text-align:center"><span class="num">${fmt(bankTotal)}</span></td>
+        <td style="text-align:center"><span class="num">${fmt(branchTotal)}</span></td>
+        <td style="text-align:center"><span class="num ${diff>0.01?'num-neg':diff<-0.01?'num-pos':'num-zero'}">${Math.abs(diff)<0.01?'—':fmt(diff)}</span></td>
+        <td style="text-align:center">${statusBadge}</td>
+        <td style="text-align:center;color:#888">${bankDays}</td>
+        <td style="text-align:center;color:#888">${branchDays}</td>
+      </tr><tr id="detail-${atmId}-${branch.replace(/\s/g,'_')}" style="display:none"><td colspan="8" style="padding:0 10px 10px 10px;background:#f8f8f5">
+        ${renderAtmDetail(atmId, atmDates, bd)}
+      </td></tr>`;
+    }).join('');
+
+    const bDiff = branchBank - branchBranch;
+    grandBankTotal += branchBank;
+    grandBranchTotal += branchBranch;
+
+    html += `<tr class="branch-hdr">
+      <td class="sticky-col" colspan="2">📍 ${branch}</td>
+      <td style="text-align:center"><strong>${fmt(branchBank)}</strong></td>
+      <td style="text-align:center"><strong>${fmt(branchBranch)}</strong></td>
+      <td style="text-align:center"><strong class="${bDiff>0.01?'num-neg':bDiff<-0.01?'num-pos':'num-zero'}">${Math.abs(bDiff)<0.01?'✓':fmt(bDiff)}</strong></td>
+      <td colspan="3"></td>
+    </tr>${atmRows}`;
+  }
+
+  const gDiff = grandBankTotal - grandBranchTotal;
+  html += `<tr class="totals-row">
+    <td class="sticky-col" colspan="2"><strong>الإجمالي الكلي</strong></td>
+    <td style="text-align:center"><strong>${fmt(grandBankTotal)}</strong></td>
+    <td style="text-align:center"><strong>${fmt(grandBranchTotal)}</strong></td>
+    <td style="text-align:center"><strong class="${gDiff>0.01?'num-neg':gDiff<-0.01?'num-pos':'num-zero'}">${Math.abs(gDiff)<0.01?'متطابق':fmt(gDiff)}</strong></td>
+    <td colspan="3"></td>
+  </tr>`;
+
+  html += '</tbody></table></div>';
+
+  // Unknown ATMs
+  const unknowns = getUnknownAtms();
+  if (unknowns.length) {
+    let unkTotal = 0;
+    const bd2 = bd;
+    const unkRows = unknowns.map(id => {
+      const t = dates.reduce((s,d)=>s+((bd2[id]||{})[d]||0),0);
+      unkTotal += t;
+      return `<tr><td><span class="badge badge-warn">⚠️ ${id}</span></td><td colspan="5" style="color:#e65100;font-size:11px">غير معرّف - أضفه لفرع من تبويب "تصدير وإعدادات"</td><td style="text-align:center">${fmt(t)}</td><td></td></tr>`;
+    }).join('');
+    html += `<div class="unknown-list" style="margin-top:14px"><h4>⚠️ صرافات غير معرّفة (${unknowns.length}) - إجمالي: ${fmt(unkTotal)} ريال</h4>
+      <table>${unkRows}</table></div>`;
+  }
+
+  document.getElementById('recon-area').innerHTML = html;
+}
+
+function renderAtmDetail(atmId, dates, bd) {
+  const rows = dates.filter(d => (bd[atmId]||{})[d] || (state.branchData[atmId]||{})[d])
+    .map(d => {
+      const bk = (bd[atmId]||{})[d]||0;
+      const br = (state.branchData[atmId]||{})[d]||0;
+      const diff = bk - br;
+      return `<tr style="font-size:11px">
+        <td style="padding:4px 8px">${fmtDate(d)}</td>
+        <td style="text-align:center;padding:4px 8px"><span class="num">${bk?fmt(bk):'—'}</span></td>
+        <td style="text-align:center;padding:4px 8px"><span class="num">${br?fmt(br):'—'}</span></td>
+        <td style="text-align:center;padding:4px 8px"><span class="num ${diff>0.01?'num-neg':diff<-0.01?'num-pos':'num-zero'}">${Math.abs(diff)<0.01?'✓':fmt(diff)}</span></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="4" style="color:#aaa;text-align:center;padding:8px">لا توجد تفاصيل</td></tr>';
+
+  return `<table style="width:400px;margin:0 auto;background:#fff;border:1px solid #e0dbd3;border-radius:8px">
+    <thead><tr style="background:#f5f2ee">
+      <th style="padding:6px 8px;font-size:11px">التاريخ</th>
+      <th style="text-align:center;padding:6px 8px;font-size:11px">البنك</th>
+      <th style="text-align:center;padding:6px 8px;font-size:11px">الفرع</th>
+      <th style="text-align:center;padding:6px 8px;font-size:11px">الفارق</th>
+    </tr></thead><tbody>${rows}</tbody>
+  </table>`;
+}
+
+function toggleAtmDetail(atmId) {
+  // There may be multiple detail rows for the same ATM (one per branch it belongs to)
+  const rows = document.querySelectorAll(`[id^="detail-${atmId}-"]`);
+  rows.forEach(row => {
+    row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  EXPORT TAB
+// ═══════════════════════════════════════════════════════
+function renderExportTab() {
+  // Populate period selects
+  const allDates = getAllDates();
+  const months = [...new Set(allDates.map(d => d.slice(0,7)))].sort();
+  const opts = '<option value="all">كل الفترات</option>' +
+    months.map(m => `<option value="${m}">${m}</option>`).join('');
+  document.getElementById('export-period').innerHTML = opts;
+  document.getElementById('recon-period').innerHTML = opts;
+
+  // Branch selects for ATM management
+  const branches = [...Object.keys(DEFAULT_ATM_MAP),
+    ...(state.atmRules||[]).filter(r=>r.op==='assign').map(r=>r.branch)
+  ].filter((v,i,a)=>a.indexOf(v)===i).sort();
+  const branchOpts = '<option value="">-- اختر فرعاً --</option>' +
+    branches.map(b => `<option value="${b}">${b}</option>`).join('') +
+    '<option value="__new__">+ فرع جديد</option>';
+  document.getElementById('rule-branch').innerHTML = branchOpts;
+
+  renderRulesList();
+}
+
+function switchMgmtTab(tab) {
+  ['assign','remove','list'].forEach(t => {
+    document.getElementById('mgmt-panel-'+t).style.display = t===tab ? '' : 'none';
+    const btn = document.getElementById('mgmt-tab-'+t);
+    btn.style.borderBottomColor = t===tab ? '#5c8a5a' : 'transparent';
+    btn.style.color = t===tab ? '#5c8a5a' : '#999';
+    btn.style.fontWeight = t===tab ? '700' : '600';
+  });
+  if (tab === 'list') renderRulesList();
+}
+
+function addAtmRule(op) {
+  let atmId, fromDate, toDate, branch;
+  if (op === 'assign') {
+    atmId    = (document.getElementById('rule-atm-id').value||'').trim();
+    branch   = document.getElementById('rule-branch').value;
+    fromDate = document.getElementById('rule-from').value;
+    toDate   = document.getElementById('rule-to').value || null;
+    if (!atmId) { toast('أدخل رقم الصرافة'); return; }
+    if (!branch) { toast('اختر الفرع'); return; }
+    if (!fromDate) { toast('اختر تاريخ البداية'); return; }
+    if (branch === '__new__') {
+      branch = prompt('اسم الفرع الجديد:');
+      if (!branch) return;
+    }
+  } else {
+    atmId    = (document.getElementById('remove-atm-id').value||'').trim();
+    fromDate = document.getElementById('remove-from').value;
+    toDate   = document.getElementById('remove-to').value || null;
+    branch   = null;
+    if (!atmId) { toast('أدخل رقم الصرافة'); return; }
+    if (!fromDate) { toast('اختر تاريخ البداية'); return; }
+  }
+
+  const rule = {
+    id: Date.now().toString(36),
+    atmId, op, branch, fromDate, toDate
+  };
+  if (!state.atmRules) state.atmRules = [];
+  state.atmRules.push(rule);
+  saveState();
+  refreshAll();
+  renderExportTab();
+  renderRulesList();
+
+  // Clear inputs
+  if (op === 'assign') {
+    document.getElementById('rule-atm-id').value = '';
+    document.getElementById('rule-from').value = '';
+    document.getElementById('rule-to').value = '';
+    document.getElementById('rule-branch').value = '';
+  } else {
+    document.getElementById('remove-atm-id').value = '';
+    document.getElementById('remove-from').value = '';
+    document.getElementById('remove-to').value = '';
+  }
+
+  const label = op === 'assign'
+    ? `✅ تم: الصرافة ${atmId} ← ${branch} (${fromDate}${toDate?' → '+toDate:' → مفتوح'})`
+    : `🗑 تم حذف الصرافة ${atmId} من ${fromDate}${toDate?' → '+toDate:' → مفتوح'}`;
+  toast(label, 3500);
+}
+
+function deleteAtmRule(ruleId) {
+  state.atmRules = (state.atmRules||[]).filter(r => r.id !== ruleId);
+  saveState();
+  refreshAll();
+  renderRulesList();
+  toast('تم حذف القاعدة');
+}
+
+function renderRulesList() {
+  const el = document.getElementById('rules-list-content');
+  if (!el) return;
+  const rules = state.atmRules || [];
+  if (!rules.length) {
+    el.innerHTML = '<p style="color:#aaa;font-size:12px;padding:8px 0">لا توجد قواعد مضافة بعد.</p>';
+    return;
+  }
+  // Group by atmId
+  const byAtm = {};
+  for (const r of rules) {
+    if (!byAtm[r.atmId]) byAtm[r.atmId] = [];
+    byAtm[r.atmId].push(r);
+  }
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:12px">';
+  html += `<thead><tr style="background:#f5f2ee">
+    <th style="padding:6px 8px;text-align:right">الصرافة</th>
+    <th style="padding:6px 8px;text-align:right">النوع</th>
+    <th style="padding:6px 8px;text-align:right">الفرع</th>
+    <th style="padding:6px 8px;text-align:right">من تاريخ</th>
+    <th style="padding:6px 8px;text-align:right">حتى تاريخ</th>
+    <th style="padding:6px 8px"></th>
+  </tr></thead><tbody>`;
+  for (const [atmId, atmRules] of Object.entries(byAtm)) {
+    for (const r of atmRules) {
+      const typeLabel = r.op === 'assign'
+        ? `<span style="background:#e8f5e9;color:#2e7d32;border-radius:4px;padding:2px 7px">تحويل/إضافة</span>`
+        : `<span style="background:#ffebee;color:#c62828;border-radius:4px;padding:2px 7px">حذف</span>`;
+      html += `<tr style="border-bottom:1px solid #f0ece4">
+        <td style="padding:6px 8px"><span class="badge badge-info">📟 ${atmId}</span></td>
+        <td style="padding:6px 8px">${typeLabel}</td>
+        <td style="padding:6px 8px">${r.branch || '—'}</td>
+        <td style="padding:6px 8px">${r.fromDate}</td>
+        <td style="padding:6px 8px">${r.toDate || '<span style="color:#aaa">مفتوح</span>'}</td>
+        <td style="padding:6px 8px"><button onclick="deleteAtmRule('${r.id}')"
+          style="background:none;border:1px solid #ddd;border-radius:4px;padding:2px 8px;cursor:pointer;color:#c62828;font-size:11px">✕ حذف</button></td>
+      </tr>`;
+    }
+  }
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function addNewAtm() { /* legacy - redirect to rule */ }
+function removeCustomAtm(id) {
+  delete state.customAtms[id];
+  saveState();
+  refreshAll();
+  renderExportTab();
+}
+
+// ═══════════════════════════════════════════════════════
+//  EXCEL EXPORT
+// ═══════════════════════════════════════════════════════
+function exportToExcel() {
+  const periodSel = document.getElementById('export-period').value;
+  let dates = getAllDates();
+  if (periodSel !== 'all') dates = dates.filter(d => d.startsWith(periodSel));
+  if (!dates.length) { toast('لا توجد بيانات للتصدير'); return; }
+
+  const bd = getBankData();
+  const atmMap = getFullAtmMap();
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Summary by ATM
+  const summaryData = [
+    ['الفرع', 'رقم الصرافة', 'إجمالي البنك', 'إجمالي الفرع', 'الفارق', 'الحالة', 'أيام البنك', 'أيام مدخلة']
+  ];
+
+  let grandBank = 0, grandBranch = 0;
+  for (const [branch, atms] of Object.entries(atmMap)) {
+    for (const atmId of atms) {
+      const bankTotal   = dates.reduce((s,d)=>s+((bd[atmId]||{})[d]||0),0);
+      const branchTotal = dates.reduce((s,d)=>s+((state.branchData[atmId]||{})[d]||0),0);
+      if (bankTotal === 0 && branchTotal === 0) continue;
+      const diff = bankTotal - branchTotal;
+      const status = Math.abs(diff)<0.01?'متطابق':diff>0?'عجز':'زيادة';
+      const bankDays   = dates.filter(d=>(bd[atmId]||{})[d]).length;
+      const branchDays = dates.filter(d=>(state.branchData[atmId]||{})[d]).length;
+      summaryData.push([branch, atmId, bankTotal, branchTotal, diff, status, bankDays, branchDays]);
+      grandBank += bankTotal; grandBranch += branchTotal;
+    }
+  }
+  summaryData.push(['الإجمالي', '', grandBank, grandBranch, grandBank-grandBranch, '', '', '']);
+
+  const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+  ws1['!cols'] = [{wch:18},{wch:14},{wch:16},{wch:16},{wch:14},{wch:12},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'ملخص المطابقة');
+
+  // Sheet 2: Daily detail
+  const detailHeader = ['الفرع', 'الصرافة', ...dates.map(fmtDateShort), 'الإجمالي'];
+  const detailData = [detailHeader];
+
+  for (const [branch, atms] of Object.entries(atmMap)) {
+    for (const atmId of atms) {
+      const hasBankData = dates.some(d=>(bd[atmId]||{})[d]);
+      if (!hasBankData) continue;
+      const bankRow   = [branch + ' - بنك', atmId, ...dates.map(d=>(bd[atmId]||{})[d]||0)];
+      const branchRow = [branch + ' - فرع', atmId, ...dates.map(d=>(state.branchData[atmId]||{})[d]||0)];
+      const diffRow   = [branch + ' - فارق', atmId, ...dates.map(d=>((bd[atmId]||{})[d]||0)-((state.branchData[atmId]||{})[d]||0))];
+      bankRow.push(bankRow.slice(2).reduce((a,b)=>a+b,0));
+      branchRow.push(branchRow.slice(2).reduce((a,b)=>a+b,0));
+      diffRow.push(diffRow.slice(2).reduce((a,b)=>a+b,0));
+      detailData.push(bankRow, branchRow, diffRow, []);
+    }
+  }
+
+  const ws2 = XLSX.utils.aoa_to_sheet(detailData);
+  ws2['!cols'] = [{wch:22},{wch:12},...dates.map(()=>({wch:12})),{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'تفصيل يومي');
+
+  // Unknown ATMs sheet
+  const unknowns = getUnknownAtms();
+  if (unknowns.length) {
+    const unkData = [['رقم الصرافة', ...dates.map(fmtDateShort), 'الإجمالي']];
+    for (const id of unknowns) {
+      const row = [id, ...dates.map(d=>(bd[id]||{})[d]||0)];
+      row.push(row.slice(1).reduce((a,b)=>a+b,0));
+      unkData.push(row);
+    }
+    const ws3 = XLSX.utils.aoa_to_sheet(unkData);
+    XLSX.utils.book_append_sheet(wb, ws3, 'صرافات غير معرفة');
+  }
+
+  const periodLabel = periodSel === 'all' ? 'كامل' : periodSel;
+  XLSX.writeFile(wb, `مطابقة_الصرافات_${periodLabel}.xlsx`);
+  toast('✅ تم تصدير الملف بنجاح');
+}
+
+// ═══════════════════════════════════════════════════════
+//  BACKUP / RESTORE
+// ═══════════════════════════════════════════════════════
+function exportState() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `نسخة_احتياطية_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  toast('تم حفظ النسخة الاحتياطية');
+}
+
+function importState(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const s = JSON.parse(e.target.result);
+      state.bankFiles  = s.bankFiles  || {};
+      state.branchData = s.branchData || {};
+      state.customAtms = s.customAtms || {};
+      saveState();
+      refreshAll();
+      toast('✅ تم استعادة النسخة الاحتياطية بنجاح');
+    } catch {
+      toast('❌ خطأ في قراءة ملف النسخة الاحتياطية');
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function clearAllData() {
+  if (!confirm('تحذير: سيتم مسح كل البيانات (ملفات البنك والإدخالات). هل أنت متأكد؟')) return;
+  state = { bankFiles:{}, branchData:{}, customAtms:{} };
+  saveState();
+  refreshAll();
+  toast('تم مسح كل البيانات');
+}
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+function fmt(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return n.toLocaleString('ar-SA', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function fmtDateShort(iso) {
+  if (!iso) return '';
+  const [,m,d] = iso.split('-');
+  return `${d}/${m}`;
+}
+
+function toast(msg, duration=3000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.style.display='none', duration);
+}
+
+function updateHeaderStats() {
+  const files = Object.keys(state.bankFiles).length;
+  const bd = getBankData();
+  const atms = Object.keys(bd).length;
+  const dates = getAllDates();
+  document.getElementById('hdr-files').textContent = `${files} ملف بنكي`;
+  document.getElementById('hdr-atms').textContent = `${atms} صرافة`;
+  document.getElementById('hdr-dates').textContent = dates.length
+    ? `${fmtDate(dates[0])} → ${fmtDate(dates[dates.length-1])}`
+    : 'لا توجد فترة';
+}
+
+function refreshAll() {
+  updateHeaderStats();
+  renderUploadTab();
+  // Update period selects
+  const allDates = getAllDates();
+  const months = [...new Set(allDates.map(d => d.slice(0,7)))].sort();
+  const opts = '<option value="all">كل الفترات</option>' +
+    months.map(m => `<option value="${m}">${m}</option>`).join('');
+  ['recon-period','export-period'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = opts;
+  });
+  // Refresh entry branch list (date-aware)
+  const branchEl = document.getElementById('entry-branch');
+  if (branchEl) {
+    const curVal = branchEl.value;
+    const bdMap = getBranchDateMap(allDates.length ? allDates : null);
+    const branches = allDates.length ? Object.keys(bdMap) : Object.keys(DEFAULT_ATM_MAP);
+    branchEl.innerHTML = '<option value="">كل الفروع</option>' +
+      branches.sort().map(b => `<option value="${b}">${b}</option>`).join('');
+    branchEl.value = curVal;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+window.onload = () => {
+  loadState();
+  setupEntryControls();
+  refreshAll();
+};
+</script>
+</body>
+</html>
