@@ -930,7 +930,7 @@ function renderEntry() {
             style="width:115px${c.bankAmt===0?';opacity:0.5':''}"
             class="entry-input${bankFilled?' changed':''}"
           >
-          ${c.bankAmt ? `<div class="entry-diff" style="font-size:10px;margin-top:2px;${Math.abs(c.diff)<0.01&&currentVal?'color:#2e7d32':c.diff<0?'color:#e65100':'color:#c62828'}">
+          ${c.bankAmt ? `<div class="entry-diff" style="font-size:11px;font-weight:700;margin-top:2px;color:#c62828">
             فارق: ${Math.abs(c.diff)<0.01&&currentVal?'✓ متطابق':currentVal?fmt(c.diff):'—'}
           </div>` : ''}
         </td>`;
@@ -989,11 +989,11 @@ function saveEntry(input) {
         const bankAmt = parseFloat(bankAmtMatch2[1]);
         // الفارق = المدخل - البنك (موجب إذا أدخلت أكثر، سالب إذا أدخلت أقل)
         const diff = val - bankAmt;
+        diffDiv.style.color = '#c62828';
+        diffDiv.style.fontWeight = '700';
         if (Math.abs(diff) < 0.01 && val) {
-          diffDiv.style.color = '#2e7d32';
           diffDiv.textContent = 'فارق: ✓ متطابق';
         } else if (val) {
-          diffDiv.style.color = diff < 0 ? '#e65100' : '#c62828';
           diffDiv.textContent = 'فارق: ' + fmt(diff);
         } else {
           diffDiv.textContent = 'فارق: —';
@@ -1014,7 +1014,7 @@ function autoFillEntry(atmId, date, bankAmt, btn) {
     const input = btn.closest('td').querySelector('input');
     if (input) { input.value = ''; input.classList.remove('changed'); }
     const diffDiv = btn.closest('td').querySelector('.entry-diff');
-    if (diffDiv) { diffDiv.textContent = 'فارق: —'; diffDiv.style.color = '#e65100'; }
+    if (diffDiv) { diffDiv.textContent = 'فارق: —'; diffDiv.style.color = '#c62828'; diffDiv.style.fontWeight = '700'; }
   } else {
     state.branchData[atmId][date] = bankAmt;
     btn.textContent = '✅';
@@ -1022,7 +1022,7 @@ function autoFillEntry(atmId, date, bankAmt, btn) {
     const input = btn.closest('td').querySelector('input');
     if (input) { input.value = bankAmt; input.classList.add('changed'); }
     const diffDiv = btn.closest('td').querySelector('.entry-diff');
-    if (diffDiv) { diffDiv.textContent = 'فارق: ✓ متطابق'; diffDiv.style.color = '#2e7d32'; }
+    if (diffDiv) { diffDiv.textContent = 'فارق: ✓ متطابق'; diffDiv.style.color = '#c62828'; diffDiv.style.fontWeight = '700'; }
   }
   saveState();
 }
