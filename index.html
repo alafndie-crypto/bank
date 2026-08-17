@@ -242,7 +242,7 @@ input[type=text]{padding:7px 10px;border-radius:7px;border:1px solid #c5bfb7;bac
       <div class="new-atm-form" style="flex-wrap:wrap;gap:10px">
         <div class="form-group">
           <label>رقم الصرافة</label>
-          <input type="text" id="rule-atm-id" placeholder="مثال: 1140197" style="width:130px">
+          <input type="text" id="rule-atm-id" placeholder="مثال: 1140197" style="width:130px" oninput="this.value=toEnglishDigits(this.value)">
         </div>
         <div class="form-group">
           <label>الفرع المستهدف</label>
@@ -274,7 +274,7 @@ input[type=text]{padding:7px 10px;border-radius:7px;border:1px solid #c5bfb7;bac
       <div class="new-atm-form" style="flex-wrap:wrap;gap:10px">
         <div class="form-group">
           <label>رقم الصرافة</label>
-          <input type="text" id="remove-atm-id" placeholder="مثال: 1140197" style="width:130px">
+          <input type="text" id="remove-atm-id" placeholder="مثال: 1140197" style="width:130px" oninput="this.value=toEnglishDigits(this.value)">
         </div>
         <div class="form-group">
           <label>من تاريخ</label>
@@ -922,7 +922,7 @@ function renderEntry() {
               class="autofill-btn"
             >${bankFilled ? '✅' : '☑'}</button>` : ''}
           </div>
-          <input type="number" step="0.01" value="${currentVal||''}"
+          <input type="text" inputmode="decimal" value="${currentVal||''}"
             placeholder="أدخل المبلغ"
             data-atm="${atmId}" data-date="${c.d}"
             oninput="saveEntry(this)"
@@ -958,7 +958,17 @@ function renderEntry() {
 function saveEntry(input) {
   const atmId = input.dataset.atm;
   const date  = input.dataset.date;
-  const val   = parseFloat(input.value) || 0;
+
+  // تحويل أي أرقام عربية/فارسية مكتوبة إلى أرقام إنجليزية فوراً
+  const raw = input.value;
+  const converted = toEnglishDigits(raw);
+  if (converted !== raw) {
+    const pos = input.selectionStart;
+    input.value = converted;
+    if (pos !== null) input.setSelectionRange(pos, pos);
+  }
+
+  const val = parseFloat(converted) || 0;
   if (!state.branchData[atmId]) state.branchData[atmId] = {};
   if (val) {
     state.branchData[atmId][date] = val;
@@ -1306,7 +1316,7 @@ function switchMgmtTab(tab) {
 function addAtmRule(op) {
   let atmId, fromDate, toDate, branch;
   if (op === 'assign') {
-    atmId    = (document.getElementById('rule-atm-id').value||'').trim();
+    atmId    = toEnglishDigits((document.getElementById('rule-atm-id').value||'').trim());
     branch   = document.getElementById('rule-branch').value;
     fromDate = document.getElementById('rule-from').value;
     toDate   = document.getElementById('rule-to').value || null;
@@ -1318,7 +1328,7 @@ function addAtmRule(op) {
       if (!branch) return;
     }
   } else {
-    atmId    = (document.getElementById('remove-atm-id').value||'').trim();
+    atmId    = toEnglishDigits((document.getElementById('remove-atm-id').value||'').trim());
     fromDate = document.getElementById('remove-from').value;
     toDate   = document.getElementById('remove-to').value || null;
     branch   = null;
@@ -1538,7 +1548,22 @@ function clearAllData() {
 // ═══════════════════════════════════════════════════════
 function fmt(n) {
   if (n === null || n === undefined || isNaN(n)) return '—';
-  return n.toLocaleString('ar-SA', {minimumFractionDigits:2, maximumFractionDigits:2});
+  // نستخدم en-US لضمان أرقام إنجليزية دائماً (٠١٢٣ → 0123) بغض النظر عن لغة النظام
+  return n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// تحويل أي أرقام عربية/فارسية مكتوبة إلى أرقام إنجليزية
+function toEnglishDigits(str) {
+  if (str === null || str === undefined) return str;
+  const arabic  = '٠١٢٣٤٥٦٧٨٩';
+  const persian = '۰۱۲۳۴۵۶۷۸۹';
+  return String(str).replace(/[٠-٩۰-۹]/g, ch => {
+    const ai = arabic.indexOf(ch);
+    if (ai > -1) return ai;
+    const pi = persian.indexOf(ch);
+    if (pi > -1) return pi;
+    return ch;
+  });
 }
 
 function fmtDate(iso) {
