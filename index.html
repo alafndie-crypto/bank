@@ -673,6 +673,31 @@ async function handleFiles(files) {
 }
 
 // ═══════════════════════════════════════════════════════
+//  UI STATE PERSISTENCE (active tab + entry filters)
+// ═══════════════════════════════════════════════════════
+function saveUIState() {
+  try {
+    const ui = {
+      activeTab: (document.querySelector('.tab-content.active')||{}).id?.replace('tab-','') || 'upload',
+      entryMode:   document.getElementById('entry-mode')?.value,
+      entryDate:   document.getElementById('entry-date')?.value,
+      entryFrom:   document.getElementById('entry-from')?.value,
+      entryTo:     document.getElementById('entry-to')?.value,
+      entryMonth:  document.getElementById('entry-month')?.value,
+      entryBranch: document.getElementById('entry-branch')?.value,
+    };
+    localStorage.setItem('atm_recon_ui_v1', JSON.stringify(ui));
+  } catch(e) {}
+}
+
+function loadUIState() {
+  try {
+    const raw = localStorage.getItem('atm_recon_ui_v1');
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+// ═══════════════════════════════════════════════════════
 //  TAB NAVIGATION
 // ═══════════════════════════════════════════════════════
 function showTab(tab) {
@@ -683,6 +708,7 @@ function showTab(tab) {
   if (tab === 'recon')   renderRecon();
   if (tab === 'entry')   renderEntry();
   if (tab === 'export')  renderExportTab();
+  saveUIState();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -744,6 +770,7 @@ function removeFile(name) {
 function setupEntryControls() {
   const modeEl = document.getElementById('entry-mode');
   const branchEl = document.getElementById('entry-branch');
+  const savedUI = loadUIState();
 
   // Populate branches (date-aware: use all dates available)
   const allDates = getAllDates();
@@ -754,16 +781,29 @@ function setupEntryControls() {
   branchEl.innerHTML = '<option value="">كل الفروع</option>' +
     allBranches.sort().map(b => `<option value="${b}">${b}</option>`).join('');
 
-  // Set default date to first date in bank data
-  const dates = getAllDates();
-  if (dates.length) {
-    document.getElementById('entry-date').value = dates[0];
-    document.getElementById('entry-from').value = dates[0];
-    document.getElementById('entry-to').value = dates[dates.length-1];
-    const m = dates[0].slice(0,7);
+  // Restore saved filters إن وُجدت، وإلا استخدم القيم الافتراضية (أول/آخر تاريخ متاح)
+  if (dates0Available(allDates) && savedUI) {
+    if (savedUI.entryMode)  modeEl.value = savedUI.entryMode;
+    if (savedUI.entryDate)  document.getElementById('entry-date').value  = savedUI.entryDate;
+    if (savedUI.entryFrom)  document.getElementById('entry-from').value  = savedUI.entryFrom;
+    if (savedUI.entryTo)    document.getElementById('entry-to').value    = savedUI.entryTo;
+    if (savedUI.entryMonth) { const me=document.getElementById('entry-month'); if(me) me.value = savedUI.entryMonth; }
+    if (savedUI.entryBranch !== undefined && allBranches.includes(savedUI.entryBranch)) branchEl.value = savedUI.entryBranch;
+  } else if (allDates.length) {
+    document.getElementById('entry-date').value = allDates[0];
+    document.getElementById('entry-from').value = allDates[0];
+    document.getElementById('entry-to').value = allDates[allDates.length-1];
+    const m = allDates[0].slice(0,7);
     const monthEl = document.getElementById('entry-month');
     if (monthEl) monthEl.value = m;
   }
+
+  // إظهار حقل التاريخ المناسب لوضع العرض المحفوظ
+  const mode = modeEl.value;
+  document.getElementById('date-ctrl').style.display   = mode==='date'  ?'flex':'none';
+  document.getElementById('range-ctrl').style.display  = mode==='range' ?'flex':'none';
+  document.getElementById('range-ctrl2').style.display = mode==='range' ?'flex':'none';
+  document.getElementById('month-ctrl').style.display  = mode==='month' ?'flex':'none';
 
   modeEl.onchange = () => {
     const mode = modeEl.value;
@@ -774,6 +814,8 @@ function setupEntryControls() {
     renderEntry();
   };
 }
+
+function dates0Available(allDates) { return allDates.length > 0; }
 
 function getEntryDates() {
   const mode = document.getElementById('entry-mode').value;
@@ -796,6 +838,7 @@ function getEntryDates() {
 }
 
 function renderEntry() {
+  saveUIState();
   const dates = getEntryDates();
   const selectedBranch = document.getElementById('entry-branch').value;
   const bd = getBankData();
@@ -853,14 +896,15 @@ function renderEntry() {
         const branchAmt = (state.branchData[atmId]||{})[d] || 0;
         if (bankAmt) atmBankTotal += bankAmt;
         if (branchAmt) atmBranchTotal += branchAmt;
-        const diff = bankAmt - branchAmt;
+        // الفارق = المدخل - البنك (موجب إذا أدخلت أكثر، سالب إذا أدخلت أقل)
+        const diff = branchAmt - bankAmt;
         // Mark as inactive date (ATM not in this branch on this date)
         const inactive = !bankAmt && (bd[atmId]||{})[d];
         return { bankAmt, branchAmt, diff, d, inactive };
       });
       branchBankTotal += atmBankTotal;
       branchBranchTotal += atmBranchTotal;
-      const atmDiff = atmBankTotal - atmBranchTotal;
+      const atmDiff = atmBranchTotal - atmBankTotal;
 
       return `<tr class="atm-row">
         <td class="sticky-col" style="color:#888;font-size:11px"></td>
@@ -886,24 +930,24 @@ function renderEntry() {
             style="width:115px${c.bankAmt===0?';opacity:0.5':''}"
             class="entry-input${bankFilled?' changed':''}"
           >
-          ${c.bankAmt ? `<div style="font-size:10px;margin-top:2px;${Math.abs(c.diff)<0.01&&currentVal?'color:#2e7d32':c.diff>0?'color:#e65100':'color:#c62828'}">
+          ${c.bankAmt ? `<div class="entry-diff" style="font-size:10px;margin-top:2px;${Math.abs(c.diff)<0.01&&currentVal?'color:#2e7d32':c.diff<0?'color:#e65100':'color:#c62828'}">
             فارق: ${Math.abs(c.diff)<0.01&&currentVal?'✓ متطابق':currentVal?fmt(c.diff):'—'}
           </div>` : ''}
         </td>`;
         }).join('')}
         <td style="text-align:center"><span class="num">${fmt(atmBankTotal)}</span></td>
         <td style="text-align:center"><span class="num">${fmt(atmBranchTotal)}</span></td>
-        <td style="text-align:center"><span class="num ${atmDiff>0.01?'num-neg':atmDiff<-0.01?'num-pos':'num-zero'}">${Math.abs(atmDiff)<0.01?'✓':fmt(atmDiff)}</span></td>
+        <td style="text-align:center"><span class="num ${atmDiff<-0.01?'num-neg':atmDiff>0.01?'num-pos':'num-zero'}">${Math.abs(atmDiff)<0.01?'✓':fmt(atmDiff)}</span></td>
       </tr>`;
     }).join('');
 
-    const bDiff = branchBankTotal - branchBranchTotal;
+    const bDiff = branchBranchTotal - branchBankTotal;
     html += `<tr class="branch-hdr">
       <td class="sticky-col" colspan="2">📍 ${branch}</td>
       ${visibleDates.map(() => '<td></td>').join('')}
       <td style="text-align:center"><strong>${fmt(branchBankTotal)}</strong></td>
       <td style="text-align:center"><strong>${fmt(branchBranchTotal)}</strong></td>
-      <td style="text-align:center"><strong class="${bDiff>0.01?'num-neg':bDiff<-0.01?'num-pos':'num-zero'}">${Math.abs(bDiff)<0.01?'✓ متطابق':fmt(bDiff)}</strong></td>
+      <td style="text-align:center"><strong class="${bDiff<-0.01?'num-neg':bDiff>0.01?'num-pos':'num-zero'}">${Math.abs(bDiff)<0.01?'✓ متطابق':fmt(bDiff)}</strong></td>
     </tr>${atmRows}`;
   }
 
@@ -938,17 +982,18 @@ function saveEntry(input) {
       }
     }
     // Update diff display
-    const diffDiv = td.querySelector('div[style*="font-size:10px"]');
+    const diffDiv = td.querySelector('.entry-diff');
     if (diffDiv) {
       const bankAmtMatch2 = td.querySelector('.autofill-btn')?.getAttribute('onclick')?.match(/autoFillEntry\('[^']+','[^']+',([^,]+),/);
       if (bankAmtMatch2) {
         const bankAmt = parseFloat(bankAmtMatch2[1]);
-        const diff = bankAmt - val;
+        // الفارق = المدخل - البنك (موجب إذا أدخلت أكثر، سالب إذا أدخلت أقل)
+        const diff = val - bankAmt;
         if (Math.abs(diff) < 0.01 && val) {
           diffDiv.style.color = '#2e7d32';
           diffDiv.textContent = 'فارق: ✓ متطابق';
         } else if (val) {
-          diffDiv.style.color = diff > 0 ? '#e65100' : '#c62828';
+          diffDiv.style.color = diff < 0 ? '#e65100' : '#c62828';
           diffDiv.textContent = 'فارق: ' + fmt(diff);
         } else {
           diffDiv.textContent = 'فارق: —';
@@ -968,7 +1013,7 @@ function autoFillEntry(atmId, date, bankAmt, btn) {
     btn.style.color = '#aaa';
     const input = btn.closest('td').querySelector('input');
     if (input) { input.value = ''; input.classList.remove('changed'); }
-    const diffDiv = btn.closest('td').querySelector('div[style*="font-size:10px"]');
+    const diffDiv = btn.closest('td').querySelector('.entry-diff');
     if (diffDiv) { diffDiv.textContent = 'فارق: —'; diffDiv.style.color = '#e65100'; }
   } else {
     state.branchData[atmId][date] = bankAmt;
@@ -976,7 +1021,7 @@ function autoFillEntry(atmId, date, bankAmt, btn) {
     btn.style.color = '#2e7d32';
     const input = btn.closest('td').querySelector('input');
     if (input) { input.value = bankAmt; input.classList.add('changed'); }
-    const diffDiv = btn.closest('td').querySelector('div[style*="font-size:10px"]');
+    const diffDiv = btn.closest('td').querySelector('.entry-diff');
     if (diffDiv) { diffDiv.textContent = 'فارق: ✓ متطابق'; diffDiv.style.color = '#2e7d32'; }
   }
   saveState();
@@ -1082,7 +1127,7 @@ function renderRecon() {
       }
     }
   }
-  const totalDiff = totalBank - totalBranch;
+  const totalDiff = totalBranch - totalBank;
   // Build a simple atmMap from branchDateMap for table rendering
   const atmMap = {};
   for (const [branch, atms] of Object.entries(branchDateMap)) {
@@ -1092,8 +1137,8 @@ function renderRecon() {
   document.getElementById('recon-summary').innerHTML = `
     <div class="summary-card"><div class="label">إجمالي البنك</div><div class="value">${fmt(totalBank)}</div><div style="font-size:10px;color:#888;margin-top:3px">ريال سعودي</div></div>
     <div class="summary-card"><div class="label">إجمالي الفروع</div><div class="value">${fmt(totalBranch)}</div><div style="font-size:10px;color:#888;margin-top:3px">ريال سعودي</div></div>
-    <div class="summary-card ${Math.abs(totalDiff)<0.01?'green':totalDiff>0?'red':'orange'}">
-      <div class="label">${Math.abs(totalDiff)<0.01?'✅ متطابق':totalDiff>0?'⚠️ عجز (البنك أكثر)':'⚠️ زيادة (الفرع أكثر)'}</div>
+    <div class="summary-card ${Math.abs(totalDiff)<0.01?'green':totalDiff<0?'red':'orange'}">
+      <div class="label">${Math.abs(totalDiff)<0.01?'✅ متطابق':totalDiff<0?'⚠️ عجز (البنك أكثر)':'⚠️ زيادة (الفرع أكثر)'}</div>
       <div class="value">${Math.abs(totalDiff)<0.01?'صفر':fmt(Math.abs(totalDiff))}</div>
     </div>
     <div class="summary-card"><div class="label">صرافات متطابقة</div><div class="value">${matchedAtms} / ${totalAtmCount}</div>
@@ -1126,12 +1171,12 @@ function renderRecon() {
       const bankTotal   = Object.values(atmDateData[atmId] || {}).reduce((s,v)=>s+v, 0);
       // Branch total: only the same dates
       const branchTotal = atmDates.reduce((s,d) => s + ((state.branchData[atmId]||{})[d]||0), 0);
-      const diff = bankTotal - branchTotal;
+      const diff = branchTotal - bankTotal;
       branchBank += bankTotal;
       branchBranch += branchTotal;
       const bankDays   = atmDates.length;
       const branchDays = atmDates.filter(d => (state.branchData[atmId]||{})[d]).length;
-      const status = bankTotal===0 ? 'لا بيانات' : Math.abs(diff)<0.01 ? 'متطابق' : diff>0 ? 'عجز' : 'زيادة';
+      const status = bankTotal===0 ? 'لا بيانات' : Math.abs(diff)<0.01 ? 'متطابق' : diff<0 ? 'عجز' : 'زيادة';
       const statusBadge = `<span class="badge badge-${status==='متطابق'?'ok':status==='لا بيانات'?'muted':'err'}">${status}</span>`;
       // Show transfer badge if ATM has rules
       const hasRule = (state.atmRules||[]).some(r => r.atmId === atmId);
@@ -1141,7 +1186,7 @@ function renderRecon() {
         <td>${transferBadge}<span class="badge badge-info">📟 ${atmId}</span></td>
         <td style="text-align:center"><span class="num">${fmt(bankTotal)}</span></td>
         <td style="text-align:center"><span class="num">${fmt(branchTotal)}</span></td>
-        <td style="text-align:center"><span class="num ${diff>0.01?'num-neg':diff<-0.01?'num-pos':'num-zero'}">${Math.abs(diff)<0.01?'—':fmt(diff)}</span></td>
+        <td style="text-align:center"><span class="num ${diff<-0.01?'num-neg':diff>0.01?'num-pos':'num-zero'}">${Math.abs(diff)<0.01?'—':fmt(diff)}</span></td>
         <td style="text-align:center">${statusBadge}</td>
         <td style="text-align:center;color:#888">${bankDays}</td>
         <td style="text-align:center;color:#888">${branchDays}</td>
@@ -1150,7 +1195,7 @@ function renderRecon() {
       </td></tr>`;
     }).join('');
 
-    const bDiff = branchBank - branchBranch;
+    const bDiff = branchBranch - branchBank;
     grandBankTotal += branchBank;
     grandBranchTotal += branchBranch;
 
@@ -1158,17 +1203,17 @@ function renderRecon() {
       <td class="sticky-col" colspan="2">📍 ${branch}</td>
       <td style="text-align:center"><strong>${fmt(branchBank)}</strong></td>
       <td style="text-align:center"><strong>${fmt(branchBranch)}</strong></td>
-      <td style="text-align:center"><strong class="${bDiff>0.01?'num-neg':bDiff<-0.01?'num-pos':'num-zero'}">${Math.abs(bDiff)<0.01?'✓':fmt(bDiff)}</strong></td>
+      <td style="text-align:center"><strong class="${bDiff<-0.01?'num-neg':bDiff>0.01?'num-pos':'num-zero'}">${Math.abs(bDiff)<0.01?'✓':fmt(bDiff)}</strong></td>
       <td colspan="3"></td>
     </tr>${atmRows}`;
   }
 
-  const gDiff = grandBankTotal - grandBranchTotal;
+  const gDiff = grandBranchTotal - grandBankTotal;
   html += `<tr class="totals-row">
     <td class="sticky-col" colspan="2"><strong>الإجمالي الكلي</strong></td>
     <td style="text-align:center"><strong>${fmt(grandBankTotal)}</strong></td>
     <td style="text-align:center"><strong>${fmt(grandBranchTotal)}</strong></td>
-    <td style="text-align:center"><strong class="${gDiff>0.01?'num-neg':gDiff<-0.01?'num-pos':'num-zero'}">${Math.abs(gDiff)<0.01?'متطابق':fmt(gDiff)}</strong></td>
+    <td style="text-align:center"><strong class="${gDiff<-0.01?'num-neg':gDiff>0.01?'num-pos':'num-zero'}">${Math.abs(gDiff)<0.01?'متطابق':fmt(gDiff)}</strong></td>
     <td colspan="3"></td>
   </tr>`;
 
@@ -1196,12 +1241,12 @@ function renderAtmDetail(atmId, dates, bd) {
     .map(d => {
       const bk = (bd[atmId]||{})[d]||0;
       const br = (state.branchData[atmId]||{})[d]||0;
-      const diff = bk - br;
+      const diff = br - bk;
       return `<tr style="font-size:11px">
         <td style="padding:4px 8px">${fmtDate(d)}</td>
         <td style="text-align:center;padding:4px 8px"><span class="num">${bk?fmt(bk):'—'}</span></td>
         <td style="text-align:center;padding:4px 8px"><span class="num">${br?fmt(br):'—'}</span></td>
-        <td style="text-align:center;padding:4px 8px"><span class="num ${diff>0.01?'num-neg':diff<-0.01?'num-pos':'num-zero'}">${Math.abs(diff)<0.01?'✓':fmt(diff)}</span></td>
+        <td style="text-align:center;padding:4px 8px"><span class="num ${diff<-0.01?'num-neg':diff>0.01?'num-pos':'num-zero'}">${Math.abs(diff)<0.01?'✓':fmt(diff)}</span></td>
       </tr>`;
     }).join('') || '<tr><td colspan="4" style="color:#aaa;text-align:center;padding:8px">لا توجد تفاصيل</td></tr>';
 
@@ -1393,15 +1438,15 @@ function exportToExcel() {
       const bankTotal   = dates.reduce((s,d)=>s+((bd[atmId]||{})[d]||0),0);
       const branchTotal = dates.reduce((s,d)=>s+((state.branchData[atmId]||{})[d]||0),0);
       if (bankTotal === 0 && branchTotal === 0) continue;
-      const diff = bankTotal - branchTotal;
-      const status = Math.abs(diff)<0.01?'متطابق':diff>0?'عجز':'زيادة';
+      const diff = branchTotal - bankTotal;
+      const status = Math.abs(diff)<0.01?'متطابق':diff<0?'عجز':'زيادة';
       const bankDays   = dates.filter(d=>(bd[atmId]||{})[d]).length;
       const branchDays = dates.filter(d=>(state.branchData[atmId]||{})[d]).length;
       summaryData.push([branch, atmId, bankTotal, branchTotal, diff, status, bankDays, branchDays]);
       grandBank += bankTotal; grandBranch += branchTotal;
     }
   }
-  summaryData.push(['الإجمالي', '', grandBank, grandBranch, grandBank-grandBranch, '', '', '']);
+  summaryData.push(['الإجمالي', '', grandBank, grandBranch, grandBranch-grandBank, '', '', '']);
 
   const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
   ws1['!cols'] = [{wch:18},{wch:14},{wch:16},{wch:16},{wch:14},{wch:12},{wch:12},{wch:12}];
@@ -1417,7 +1462,7 @@ function exportToExcel() {
       if (!hasBankData) continue;
       const bankRow   = [branch + ' - بنك', atmId, ...dates.map(d=>(bd[atmId]||{})[d]||0)];
       const branchRow = [branch + ' - فرع', atmId, ...dates.map(d=>(state.branchData[atmId]||{})[d]||0)];
-      const diffRow   = [branch + ' - فارق', atmId, ...dates.map(d=>((bd[atmId]||{})[d]||0)-((state.branchData[atmId]||{})[d]||0))];
+      const diffRow   = [branch + ' - فارق', atmId, ...dates.map(d=>((state.branchData[atmId]||{})[d]||0)-((bd[atmId]||{})[d]||0))];
       bankRow.push(bankRow.slice(2).reduce((a,b)=>a+b,0));
       branchRow.push(branchRow.slice(2).reduce((a,b)=>a+b,0));
       diffRow.push(diffRow.slice(2).reduce((a,b)=>a+b,0));
@@ -1559,6 +1604,10 @@ window.onload = () => {
   loadState();
   setupEntryControls();
   refreshAll();
+  // استعادة آخر تبويب مفتوح قبل إعادة تحميل الصفحة
+  const savedUI = loadUIState();
+  const lastTab = (savedUI && savedUI.activeTab) || 'upload';
+  showTab(lastTab);
 };
 </script>
 <div id="support-bar">
