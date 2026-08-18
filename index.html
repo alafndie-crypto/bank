@@ -218,14 +218,18 @@ input[type=text]{padding:7px 10px;border-radius:7px;border:1px solid #c5bfb7;bac
     <div class="card-title">⚙️ إدارة الصرافات</div>
 
     <!-- Tabs inside card -->
-    <div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:2px solid #e8e3db;padding-bottom:0">
-      <button id="mgmt-tab-assign" onclick="switchMgmtTab('assign')"
+    <div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:2px solid #e8e3db;padding-bottom:0;flex-wrap:wrap">
+      <button id="mgmt-tab-add" onclick="switchMgmtTab('add')"
         style="padding:6px 14px;border:none;border-bottom:3px solid #5c8a5a;background:none;font-weight:700;color:#5c8a5a;cursor:pointer;font-size:12px">
-        ➕ إضافة / تحويل
+        ➕ إضافة صرافة
+      </button>
+      <button id="mgmt-tab-transfer" onclick="switchMgmtTab('transfer')"
+        style="padding:6px 14px;border:none;border-bottom:3px solid transparent;background:none;font-weight:600;color:#999;cursor:pointer;font-size:12px">
+        🔁 نقل صرافة
       </button>
       <button id="mgmt-tab-remove" onclick="switchMgmtTab('remove')"
         style="padding:6px 14px;border:none;border-bottom:3px solid transparent;background:none;font-weight:600;color:#999;cursor:pointer;font-size:12px">
-        🗑 حذف من تاريخ
+        🗑 حذف صرافة
       </button>
       <button id="mgmt-tab-list" onclick="switchMgmtTab('list')"
         style="padding:6px 14px;border:none;border-bottom:3px solid transparent;background:none;font-weight:600;color:#999;cursor:pointer;font-size:12px">
@@ -233,61 +237,80 @@ input[type=text]{padding:7px 10px;border-radius:7px;border:1px solid #c5bfb7;bac
       </button>
     </div>
 
-    <!-- ASSIGN / TRANSFER PANEL -->
-    <div id="mgmt-panel-assign">
-      <p style="font-size:11px;color:#666;margin-bottom:10px">
-        سواء كانت صرافة جديدة أو منقولة من فرع لآخر — حدد الفرع والتواريخ.
-        <br>تركت "حتى تاريخ" فارغاً = مفتوح (مستمر).
-        <br>الإدخالات السابقة قبل تاريخ التحويل تبقى في فرعها الأصلي.
-      </p>
+    <!-- ADD PANEL -->
+    <div id="mgmt-panel-add">
+      <p style="font-size:11px;color:#666;margin-bottom:10px">أضف صرافة جديدة إلى أحد الفروع.</p>
       <div class="new-atm-form" style="flex-wrap:wrap;gap:10px">
         <div class="form-group">
           <label>رقم الصرافة</label>
-          <input type="text" id="rule-atm-id" placeholder="مثال: 1140197" style="width:130px" oninput="this.value=toEnglishDigits(this.value)">
+          <input type="text" id="add-atm-id" placeholder="مثال: 1140197" style="width:150px" oninput="this.value=toEnglishDigits(this.value)">
         </div>
         <div class="form-group">
-          <label>الفرع المستهدف</label>
-          <select id="rule-branch" style="width:160px">
+          <label>الفرع</label>
+          <select id="add-atm-branch" style="width:170px">
             <option value="">-- اختر فرعاً --</option>
           </select>
         </div>
         <div class="form-group">
-          <label>من تاريخ</label>
-          <input type="date" id="rule-from" style="width:140px">
+          <label style="visibility:hidden">حفظ</label>
+          <button class="btn btn-primary" onclick="addAtmSimple()">💾 حفظ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRANSFER PANEL -->
+    <div id="mgmt-panel-transfer" style="display:none">
+      <p style="font-size:11px;color:#666;margin-bottom:10px">
+        انقل صرافة من فرعها الحالي إلى فرع آخر ابتداءً من تاريخ معين.
+        <br>الإدخالات قبل تاريخ التحويل تبقى محسوبة على الفرع القديم، وما بعده على الفرع الجديد.
+      </p>
+      <div class="new-atm-form" style="flex-wrap:wrap;gap:10px">
+        <div class="form-group">
+          <label>الصرافة</label>
+          <select id="transfer-atm" style="width:190px" onchange="updateTransferCurrentBranch()">
+            <option value="">-- اختر صرافة --</option>
+          </select>
         </div>
         <div class="form-group">
-          <label>حتى تاريخ <span style="color:#aaa">(اختياري)</span></label>
-          <input type="date" id="rule-to" style="width:140px">
+          <label>الفرع الحالي</label>
+          <input type="text" id="transfer-current-branch" disabled style="width:140px;background:#f5f2ee;color:#888">
+        </div>
+        <div class="form-group">
+          <label>الفرع الجديد</label>
+          <select id="transfer-branch" style="width:170px">
+            <option value="">-- اختر فرعاً --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>من تاريخ التحويل</label>
+          <input type="date" id="transfer-date" style="width:150px">
         </div>
         <div class="form-group">
           <label style="visibility:hidden">تنفيذ</label>
-          <button class="btn btn-primary" onclick="addAtmRule('assign')">✅ تطبيق</button>
+          <button class="btn btn-primary" onclick="transferAtm()">🔁 تنفيذ النقل</button>
         </div>
       </div>
     </div>
 
     <!-- REMOVE PANEL -->
     <div id="mgmt-panel-remove" style="display:none">
-      <p style="font-size:11px;color:#666;margin-bottom:10px">
-        حذف صرافة من جميع الفروع ابتداءً من تاريخ معين.
-        <br>سيظل ظهورها في البنك موجوداً لكنها لن تُحسب في أي فرع.
-      </p>
+      <p style="font-size:11px;color:#666;margin-bottom:10px">اختر الفرع ثم الصرافة المراد حذفها منه.</p>
       <div class="new-atm-form" style="flex-wrap:wrap;gap:10px">
         <div class="form-group">
-          <label>رقم الصرافة</label>
-          <input type="text" id="remove-atm-id" placeholder="مثال: 1140197" style="width:130px" oninput="this.value=toEnglishDigits(this.value)">
+          <label>الفرع</label>
+          <select id="remove-branch" style="width:170px" onchange="updateRemoveAtmOptions()">
+            <option value="">-- اختر فرعاً --</option>
+          </select>
         </div>
         <div class="form-group">
-          <label>من تاريخ</label>
-          <input type="date" id="remove-from" style="width:140px">
-        </div>
-        <div class="form-group">
-          <label>حتى تاريخ <span style="color:#aaa">(اختياري)</span></label>
-          <input type="date" id="remove-to" style="width:140px">
+          <label>الصرافة</label>
+          <select id="remove-atm" style="width:190px">
+            <option value="">-- اختر فرعاً أولاً --</option>
+          </select>
         </div>
         <div class="form-group">
           <label style="visibility:hidden">تنفيذ</label>
-          <button class="btn btn-danger" onclick="addAtmRule('remove')">🗑 تطبيق الحذف</button>
+          <button class="btn btn-danger" onclick="removeAtmSelected()">🗑 حذف</button>
         </div>
       </div>
     </div>
@@ -908,7 +931,7 @@ function renderEntry() {
     let branchBankTotal = 0, branchBranchTotal = 0;
 
     const atmRows = atms.map(atmId => {
-      let atmBankTotal = 0, atmBranchTotal = 0;
+      let atmBankTotal = 0, atmBranchTotal = 0, carry = 0;
       const cells = visibleDates.map(d => {
         // Only show bank amount if ATM is assigned to this branch on this date
         const atmBranch = getAtmBranchOnDate(atmId, d);
@@ -916,12 +939,14 @@ function renderEntry() {
         const branchAmt = (state.branchData[atmId]||{})[d] || 0;
         if (bankAmt) atmBankTotal += bankAmt;
         if (branchAmt) atmBranchTotal += branchAmt;
-        // الفارق = المدخل - البنك (موجب إذا أدخلت أكثر، سالب إذا أدخلت أقل)
-        const diff = branchAmt - bankAmt;
+        // التوريد الذكي: الفارق يتراكم يوماً بعد يوم (فائض/عجز يترحّل للتاريخ التالي)
+        const rawDiff = branchAmt - bankAmt;
+        const diff = carry + rawDiff;
+        carry = diff;
         // Mark as inactive date (ATM not in this branch on this date)
         const inactive = !bankAmt && (bd[atmId]||{})[d];
         const overridden = !!(state.bankOverrides[atmId] && state.bankOverrides[atmId][d] !== undefined);
-        return { bankAmt, branchAmt, diff, d, inactive, overridden };
+        return { bankAmt, branchAmt, diff, rawDiff, d, inactive, overridden };
       });
       branchBankTotal += atmBankTotal;
       branchBranchTotal += atmBranchTotal;
@@ -934,9 +959,11 @@ function renderEntry() {
           const currentVal = (state.branchData[atmId]||{})[c.d] || 0;
           const isMatched = c.bankAmt && Math.abs(c.bankAmt - currentVal) < 0.01;
           const bankFilled = c.bankAmt && currentVal && Math.abs(currentVal - c.bankAmt) < 0.01;
+          const sum = c.bankAmt + currentVal;
+          const diffColor = c.diff < -0.01 ? '#c62828' : c.diff > 0.01 ? '#2e7d32' : '#888';
           return `<td style="padding:4px 6px">
           <div style="display:flex;align-items:center;gap:3px;margin-bottom:2px">
-            <span style="font-size:11px;color:#2e7d32;font-weight:700;white-space:nowrap">بنك:</span>
+            <span style="font-size:11px;color:#222;font-weight:700;white-space:nowrap">بنك:</span>
             <input type="text" inputmode="decimal" value="${c.bankAmt?c.bankAmt:''}"
               placeholder="-"
               title="${c.overridden?'رقم مُصحَّح يدوياً':'رقم البنك - قابل للتعديل'}"
@@ -944,7 +971,7 @@ function renderEntry() {
               onchange="saveBankOverride(this)"
               onkeydown="if(event.key==='Enter'){this.blur()}"
               class="num bank-override-input${c.overridden?' overridden':''}"
-              style="width:66px;padding:2px 4px;border:1px solid ${c.overridden?'#ffb74d':'#c8e6c9'};border-radius:4px;background:${c.overridden?'#fff3e0':'#f1f8f2'};color:${c.overridden?'#e65100':'#2e7d32'};font-weight:700;font-size:11.5px"
+              style="width:66px;padding:2px 4px;border:1px solid ${c.overridden?'#ffb74d':'#ddd'};border-radius:4px;background:${c.overridden?'#fff3e0':'#f7f7f5'};color:${c.overridden?'#e65100':'#222'};font-weight:700;font-size:11.5px"
             >
             ${c.overridden ? `<button onclick="resetBankOverride('${atmId}','${c.d}')"
               title="إلغاء التصحيح والرجوع لرقم البنك الأصلي"
@@ -964,8 +991,11 @@ function renderEntry() {
             style="width:115px"
             class="entry-input${bankFilled?' changed':''}"
           >
-          ${c.bankAmt ? `<div class="entry-diff" style="font-size:11px;font-weight:700;margin-top:2px;color:#c62828">
-            فارق: ${Math.abs(c.diff)<0.01&&currentVal?'✓ متطابق':currentVal?fmt(c.diff):'—'}
+          ${currentVal ? `<div class="entry-sum" style="font-size:11px;font-weight:700;margin-top:2px;color:#1565c0">
+            الإجمالي: ${fmt(sum)}
+          </div>` : ''}
+          ${(c.bankAmt || Math.abs(c.diff) > 0.01) ? `<div class="entry-diff" style="font-size:11px;font-weight:700;margin-top:2px;color:${diffColor}">
+            فارق: ${Math.abs(c.diff)<0.01&&currentVal?'✓ متطابق':(currentVal||Math.abs(c.diff)>0.01)?fmt(c.diff):'—'}
           </div>` : ''}
         </td>`;
         }).join('')}
@@ -989,6 +1019,17 @@ function renderEntry() {
   area.innerHTML = html;
 }
 
+// إعادة رسم جدول الإدخال مع الحفاظ على موضع التمرير (أفقياً وعمودياً) داخل الجدول
+function renderEntryPreserveScroll() {
+  const area = document.getElementById('entry-area');
+  const scroller = area ? area.querySelector('.overflow') : null;
+  const top = scroller ? scroller.scrollTop : 0;
+  const left = scroller ? scroller.scrollLeft : 0;
+  renderEntry();
+  const newScroller = document.getElementById('entry-area')?.querySelector('.overflow');
+  if (newScroller) { newScroller.scrollTop = top; newScroller.scrollLeft = left; }
+}
+
 function saveEntry(input) {
   const atmId = input.dataset.atm;
   const date  = input.dataset.date;
@@ -996,8 +1037,8 @@ function saveEntry(input) {
   // تحويل أي أرقام عربية/فارسية مكتوبة إلى أرقام إنجليزية فوراً
   const raw = input.value;
   const converted = toEnglishDigits(raw);
+  let pos = input.selectionStart;
   if (converted !== raw) {
-    const pos = input.selectionStart;
     input.value = converted;
     if (pos !== null) input.setSelectionRange(pos, pos);
   }
@@ -1006,44 +1047,31 @@ function saveEntry(input) {
   if (!state.branchData[atmId]) state.branchData[atmId] = {};
   if (val) {
     state.branchData[atmId][date] = val;
-    input.classList.add('changed');
   } else {
     delete state.branchData[atmId][date];
-    input.classList.remove('changed');
   }
   saveState();
-  // Update the autofill button state
-  const td = input.closest('td');
-  if (td) {
-    const btn = td.querySelector('.autofill-btn');
-    if (btn) {
-      const bankAmtMatch = btn.getAttribute('onclick').match(/autoFillEntry\('[^']+','[^']+',([^,]+),/);
-      if (bankAmtMatch) {
-        const bankAmt = parseFloat(bankAmtMatch[1]);
-        const isMatch = Math.abs(val - bankAmt) < 0.01 && val > 0;
-        btn.textContent = isMatch ? '✅' : '☑';
-        btn.style.color = isMatch ? '#2e7d32' : '#aaa';
-      }
-    }
-    // Update diff display
-    const diffDiv = td.querySelector('.entry-diff');
-    if (diffDiv) {
-      const bankAmtMatch2 = td.querySelector('.autofill-btn')?.getAttribute('onclick')?.match(/autoFillEntry\('[^']+','[^']+',([^,]+),/);
-      if (bankAmtMatch2) {
-        const bankAmt = parseFloat(bankAmtMatch2[1]);
-        // الفارق = المدخل - البنك (موجب إذا أدخلت أكثر، سالب إذا أدخلت أقل)
-        const diff = val - bankAmt;
-        diffDiv.style.color = '#c62828';
-        diffDiv.style.fontWeight = '700';
-        if (Math.abs(diff) < 0.01 && val) {
-          diffDiv.textContent = 'فارق: ✓ متطابق';
-        } else if (val) {
-          diffDiv.textContent = 'فارق: ' + fmt(diff);
-        } else {
-          diffDiv.textContent = 'فارق: —';
-        }
-      }
-    }
+
+  // حفظ موضع التمرير قبل إعادة الرسم (الفارق أصبح تراكمياً ويؤثر على بقية أيام نفس الصف)
+  const area = document.getElementById('entry-area');
+  const scroller = area ? area.querySelector('.overflow') : null;
+  const scrollTop = scroller ? scroller.scrollTop : 0;
+  const scrollLeft = scroller ? scroller.scrollLeft : 0;
+
+  renderEntry();
+
+  const newScroller = document.getElementById('entry-area')?.querySelector('.overflow');
+  if (newScroller) { newScroller.scrollTop = scrollTop; newScroller.scrollLeft = scrollLeft; }
+
+  // استعادة التركيز، وأهم شيء: استعادة *النص كما كتبه المستخدم بالضبط* (مو الرقم بعد التقريب)
+  // حتى لا تُحذف نقطة عشرية لسه ما اكتمل بعدها أرقام (مثال: "3928.")
+  const sel = `#entry-area input.entry-input[data-atm="${CSS.escape(atmId)}"][data-date="${CSS.escape(date)}"]`;
+  const newInput = document.querySelector(sel);
+  if (newInput) {
+    newInput.value = converted;
+    newInput.focus();
+    const p = (pos===null) ? newInput.value.length : Math.min(pos, newInput.value.length);
+    newInput.setSelectionRange(p, p);
   }
 }
 
@@ -1062,7 +1090,7 @@ function saveBankOverride(input) {
     state.bankOverrides[atmId][date] = 0;
   } else {
     const val = parseFloat(converted);
-    if (isNaN(val)) { renderEntry(); return; }
+    if (isNaN(val)) { renderEntryPreserveScroll(); return; }
     // إذا كانت القيمة المدخلة تطابق الرقم الأصلي من الملف، لا داعي لتخزين تصحيح
     const original = getRawBankAmount(atmId, date);
     if (original !== null && Math.abs(original - val) < 0.001) {
@@ -1073,7 +1101,7 @@ function saveBankOverride(input) {
     }
   }
   saveState();
-  renderEntry();
+  renderEntryPreserveScroll();
 }
 
 function resetBankOverride(atmId, date) {
@@ -1082,7 +1110,7 @@ function resetBankOverride(atmId, date) {
     if (!Object.keys(state.bankOverrides[atmId]).length) delete state.bankOverrides[atmId];
   }
   saveState();
-  renderEntry();
+  renderEntryPreserveScroll();
 }
 
 function autoFillEntry(atmId, date, bankAmt, btn) {
@@ -1091,22 +1119,12 @@ function autoFillEntry(atmId, date, bankAmt, btn) {
   // Toggle: if already filled with bank amount, clear it
   if (Math.abs(currentVal - bankAmt) < 0.01) {
     delete state.branchData[atmId][date];
-    btn.textContent = '☑';
-    btn.style.color = '#aaa';
-    const input = btn.closest('td').querySelector('input');
-    if (input) { input.value = ''; input.classList.remove('changed'); }
-    const diffDiv = btn.closest('td').querySelector('.entry-diff');
-    if (diffDiv) { diffDiv.textContent = 'فارق: —'; diffDiv.style.color = '#c62828'; diffDiv.style.fontWeight = '700'; }
   } else {
     state.branchData[atmId][date] = bankAmt;
-    btn.textContent = '✅';
-    btn.style.color = '#2e7d32';
-    const input = btn.closest('td').querySelector('input');
-    if (input) { input.value = bankAmt; input.classList.add('changed'); }
-    const diffDiv = btn.closest('td').querySelector('.entry-diff');
-    if (diffDiv) { diffDiv.textContent = 'فارق: ✓ متطابق'; diffDiv.style.color = '#c62828'; diffDiv.style.fontWeight = '700'; }
   }
   saveState();
+  // إعادة رسم كاملة لأن الفارق تراكمي (التوريد الذكي) ويؤثر على بقية أيام نفس الصف
+  renderEntryPreserveScroll();
 }
 
 function handleEntryKeydown(e, input) {
@@ -1362,20 +1380,139 @@ function renderExportTab() {
   document.getElementById('export-period').innerHTML = opts;
   document.getElementById('recon-period').innerHTML = opts;
 
-  // Branch selects for ATM management
-  const branches = [...Object.keys(DEFAULT_ATM_MAP),
-    ...(state.atmRules||[]).filter(r=>r.op==='assign').map(r=>r.branch)
-  ].filter((v,i,a)=>a.indexOf(v)===i).sort();
-  const branchOpts = '<option value="">-- اختر فرعاً --</option>' +
-    branches.map(b => `<option value="${b}">${b}</option>`).join('') +
-    '<option value="__new__">+ فرع جديد</option>';
-  document.getElementById('rule-branch').innerHTML = branchOpts;
-
+  populateAtmMgmtSelectors();
   renderRulesList();
 }
 
+function getAllBranches() {
+  return [...Object.keys(DEFAULT_ATM_MAP),
+    ...(state.atmRules||[]).filter(r=>r.op==='assign').map(r=>r.branch)
+  ].filter((v,i,a)=>a.indexOf(v)===i).sort();
+}
+
+function populateAtmMgmtSelectors() {
+  const branches = getAllBranches();
+  const branchOpts = branches.map(b => `<option value="${b}">${b}</option>`).join('');
+
+  const addBranchEl = document.getElementById('add-atm-branch');
+  if (addBranchEl) {
+    const keep = addBranchEl.value;
+    addBranchEl.innerHTML = '<option value="">-- اختر فرعاً --</option>' + branchOpts + '<option value="__new__">+ فرع جديد</option>';
+    addBranchEl.value = keep;
+  }
+
+  const transferBranchEl = document.getElementById('transfer-branch');
+  if (transferBranchEl) {
+    const keep = transferBranchEl.value;
+    transferBranchEl.innerHTML = '<option value="">-- اختر فرعاً --</option>' + branchOpts + '<option value="__new__">+ فرع جديد</option>';
+    transferBranchEl.value = keep;
+  }
+
+  const removeBranchEl = document.getElementById('remove-branch');
+  if (removeBranchEl) {
+    const keep = removeBranchEl.value;
+    removeBranchEl.innerHTML = '<option value="">-- اختر فرعاً --</option>' + branchOpts;
+    removeBranchEl.value = keep;
+  }
+
+  const transferAtmEl = document.getElementById('transfer-atm');
+  if (transferAtmEl) {
+    const keep = transferAtmEl.value;
+    const atms = getAllKnownAtms().sort();
+    transferAtmEl.innerHTML = '<option value="">-- اختر صرافة --</option>' +
+      atms.map(id => {
+        const b = getAtmBranch(id) || 'بدون فرع';
+        return `<option value="${id}" data-branch="${b}">${id} (${b})</option>`;
+      }).join('');
+    transferAtmEl.value = keep;
+  }
+
+  updateRemoveAtmOptions();
+  updateTransferCurrentBranch();
+}
+
+function updateTransferCurrentBranch() {
+  const sel = document.getElementById('transfer-atm');
+  const out = document.getElementById('transfer-current-branch');
+  if (!sel || !out) return;
+  const opt = sel.selectedOptions[0];
+  out.value = (opt && opt.value) ? (opt.dataset.branch || '') : '';
+}
+
+function updateRemoveAtmOptions() {
+  const branchEl = document.getElementById('remove-branch');
+  const atmEl = document.getElementById('remove-atm');
+  if (!branchEl || !atmEl) return;
+  const branch = branchEl.value;
+  if (!branch) { atmEl.innerHTML = '<option value="">-- اختر فرعاً أولاً --</option>'; return; }
+  const map = getFullAtmMap();
+  const atms = (map[branch] || []).slice().sort();
+  atmEl.innerHTML = atms.length
+    ? '<option value="">-- اختر صرافة --</option>' + atms.map(id => `<option value="${id}">${id}</option>`).join('')
+    : '<option value="">لا توجد صرافات في هذا الفرع</option>';
+}
+
+function addAtmSimple() {
+  let atmId = toEnglishDigits((document.getElementById('add-atm-id').value||'').trim());
+  let branch = document.getElementById('add-atm-branch').value;
+  if (!atmId) { toast('أدخل رقم الصرافة'); return; }
+  if (!branch) { toast('اختر الفرع'); return; }
+  if (branch === '__new__') {
+    branch = prompt('اسم الفرع الجديد:');
+    if (!branch) return;
+  }
+  const rule = { id: Date.now().toString(36), atmId, op:'assign', branch, fromDate:'2000-01-01', toDate:null };
+  if (!state.atmRules) state.atmRules = [];
+  state.atmRules.push(rule);
+  saveState();
+  refreshAll();
+  renderExportTab();
+  document.getElementById('add-atm-id').value = '';
+  document.getElementById('add-atm-branch').value = '';
+  toast(`✅ تمت إضافة الصرافة ${atmId} إلى ${branch}`, 3000);
+}
+
+function transferAtm() {
+  const atmId = document.getElementById('transfer-atm').value;
+  let branch = document.getElementById('transfer-branch').value;
+  const fromDate = document.getElementById('transfer-date').value;
+  if (!atmId) { toast('اختر الصرافة'); return; }
+  if (!branch) { toast('اختر الفرع الجديد'); return; }
+  if (!fromDate) { toast('اختر تاريخ التحويل'); return; }
+  if (branch === '__new__') {
+    branch = prompt('اسم الفرع الجديد:');
+    if (!branch) return;
+  }
+  const rule = { id: Date.now().toString(36), atmId, op:'assign', branch, fromDate, toDate:null };
+  if (!state.atmRules) state.atmRules = [];
+  state.atmRules.push(rule);
+  saveState();
+  refreshAll();
+  renderExportTab();
+  document.getElementById('transfer-atm').value = '';
+  document.getElementById('transfer-branch').value = '';
+  document.getElementById('transfer-date').value = '';
+  document.getElementById('transfer-current-branch').value = '';
+  toast(`🔁 تم نقل الصرافة ${atmId} إلى ${branch} ابتداءً من ${fromDate}`, 3500);
+}
+
+function removeAtmSelected() {
+  const branch = document.getElementById('remove-branch').value;
+  const atmId = document.getElementById('remove-atm').value;
+  if (!branch) { toast('اختر الفرع'); return; }
+  if (!atmId) { toast('اختر الصرافة'); return; }
+  if (!confirm(`هل تريد حذف الصرافة ${atmId} من ${branch}؟`)) return;
+  const rule = { id: Date.now().toString(36), atmId, op:'remove', branch:null, fromDate:'2000-01-01', toDate:null };
+  if (!state.atmRules) state.atmRules = [];
+  state.atmRules.push(rule);
+  saveState();
+  refreshAll();
+  renderExportTab();
+  toast(`🗑 تم حذف الصرافة ${atmId}`, 3000);
+}
+
 function switchMgmtTab(tab) {
-  ['assign','remove','list'].forEach(t => {
+  ['add','transfer','remove','list'].forEach(t => {
     document.getElementById('mgmt-panel-'+t).style.display = t===tab ? '' : 'none';
     const btn = document.getElementById('mgmt-tab-'+t);
     btn.style.borderBottomColor = t===tab ? '#5c8a5a' : 'transparent';
@@ -1385,59 +1522,8 @@ function switchMgmtTab(tab) {
   if (tab === 'list') renderRulesList();
 }
 
-function addAtmRule(op) {
-  let atmId, fromDate, toDate, branch;
-  if (op === 'assign') {
-    atmId    = toEnglishDigits((document.getElementById('rule-atm-id').value||'').trim());
-    branch   = document.getElementById('rule-branch').value;
-    fromDate = document.getElementById('rule-from').value;
-    toDate   = document.getElementById('rule-to').value || null;
-    if (!atmId) { toast('أدخل رقم الصرافة'); return; }
-    if (!branch) { toast('اختر الفرع'); return; }
-    if (!fromDate) { toast('اختر تاريخ البداية'); return; }
-    if (branch === '__new__') {
-      branch = prompt('اسم الفرع الجديد:');
-      if (!branch) return;
-    }
-  } else {
-    atmId    = toEnglishDigits((document.getElementById('remove-atm-id').value||'').trim());
-    fromDate = document.getElementById('remove-from').value;
-    toDate   = document.getElementById('remove-to').value || null;
-    branch   = null;
-    if (!atmId) { toast('أدخل رقم الصرافة'); return; }
-    if (!fromDate) { toast('اختر تاريخ البداية'); return; }
-  }
-
-  const rule = {
-    id: Date.now().toString(36),
-    atmId, op, branch, fromDate, toDate
-  };
-  if (!state.atmRules) state.atmRules = [];
-  state.atmRules.push(rule);
-  saveState();
-  refreshAll();
-  renderExportTab();
-  renderRulesList();
-
-  // Clear inputs
-  if (op === 'assign') {
-    document.getElementById('rule-atm-id').value = '';
-    document.getElementById('rule-from').value = '';
-    document.getElementById('rule-to').value = '';
-    document.getElementById('rule-branch').value = '';
-  } else {
-    document.getElementById('remove-atm-id').value = '';
-    document.getElementById('remove-from').value = '';
-    document.getElementById('remove-to').value = '';
-  }
-
-  const label = op === 'assign'
-    ? `✅ تم: الصرافة ${atmId} ← ${branch} (${fromDate}${toDate?' → '+toDate:' → مفتوح'})`
-    : `🗑 تم حذف الصرافة ${atmId} من ${fromDate}${toDate?' → '+toDate:' → مفتوح'}`;
-  toast(label, 3500);
-}
-
 function deleteAtmRule(ruleId) {
+  if (!confirm('هل تريد حذف هذه القاعدة؟')) return;
   state.atmRules = (state.atmRules||[]).filter(r => r.id !== ruleId);
   saveState();
   refreshAll();
